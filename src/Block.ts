@@ -71,6 +71,38 @@ export class Block {
     }
   }
 
+  convertToDynamic(): void {
+    // Check if already dynamic
+    if (!this.rigidBody.isFixed()) {
+      return;
+    }
+
+    // Get current position and rotation
+    const position = this.rigidBody.translation();
+    const rotation = this.rigidBody.rotation();
+
+    // Remove old static body
+    const world = getPhysicsWorld();
+    world.removeRigidBody(this.rigidBody);
+
+    // Create new dynamic body
+    const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(
+      position.x,
+      position.y,
+      position.z
+    );
+    rigidBodyDesc.setRotation(rotation);
+    this.rigidBody = world.createRigidBody(rigidBodyDesc);
+
+    // Create collider for new body
+    const colliderDesc = RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5);
+    world.createCollider(colliderDesc, this.rigidBody);
+  }
+
+  isStatic(): boolean {
+    return this.rigidBody.isFixed();
+  }
+
   destroy(): void {
     // Remove highlight if present
     this.setHighlight(false);

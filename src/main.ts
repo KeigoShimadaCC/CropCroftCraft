@@ -108,6 +108,49 @@ function animate() {
   renderer.render(scene, camera);
 }
 
+// Check if a block has support below it
+function hasSupport(block: Block, allBlocks: Block[]): boolean {
+  const pos = block.mesh.position;
+  const checkY = Math.round(pos.y) - 1;
+
+  // Check if there's a block directly below
+  for (const other of allBlocks) {
+    if (other === block) continue;
+
+    const otherPos = other.mesh.position;
+    const otherX = Math.round(otherPos.x);
+    const otherY = Math.round(otherPos.y);
+    const otherZ = Math.round(otherPos.z);
+
+    const thisX = Math.round(pos.x);
+    const thisZ = Math.round(pos.z);
+
+    // Block directly below
+    if (otherX === thisX && otherY === checkY && otherZ === thisZ) {
+      return true;
+    }
+  }
+
+  // Check if block is at or below ground level (y <= 0)
+  if (Math.round(pos.y) <= 0) {
+    return true;
+  }
+
+  return false;
+}
+
+// Convert unsupported static blocks to dynamic
+function convertUnsupportedBlocks(): void {
+  // Check all static blocks
+  const staticBlocks = blocks.filter((b) => b.isStatic());
+
+  for (const block of staticBlocks) {
+    if (!hasSupport(block, blocks)) {
+      block.convertToDynamic();
+    }
+  }
+}
+
 // Mouse click handler
 function onMouseClick(event: MouseEvent): void {
   if (event.button === 0 && highlightedBlock) {
@@ -117,6 +160,9 @@ function onMouseClick(event: MouseEvent): void {
       highlightedBlock.destroy();
       blocks.splice(index, 1);
       highlightedBlock = null;
+
+      // Check for unsupported blocks after destruction
+      convertUnsupportedBlocks();
     }
   } else if (event.button === 2 && highlightedBlock && intersectionNormal) {
     // Right click - place block
