@@ -204,7 +204,12 @@ async function main() {
   // Add keyboard listener
   window.addEventListener('keydown', onKeyDown);
 
-  // Create UI element
+  // Create crosshair
+  const crosshair = document.createElement('div');
+  crosshair.id = 'crosshair';
+  document.body.appendChild(crosshair);
+
+  // Create UI element for block type
   const uiElement = document.createElement('div');
   uiElement.id = 'block-type-ui';
   uiElement.style.position = 'absolute';
