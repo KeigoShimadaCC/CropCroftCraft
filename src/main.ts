@@ -5,7 +5,7 @@ import { Block } from './Block';
 import { Ground } from './Ground';
 import { Controls } from './Controls';
 import { BlockType, BlockColors } from './types';
-import { generateTerrain, generateHouse } from './Terrain';
+import { generateTerrain, generateFarmWorld } from './Terrain';
 import { soundManager } from './Sound';
 import { InstructionsOverlay } from './UI';
 
@@ -290,9 +290,9 @@ async function main() {
   const terrainBlocks = generateTerrain(scene);
   blocks.push(...terrainBlocks);
 
-  // Generate house
-  const houseBlocks = generateHouse(scene);
-  blocks.push(...houseBlocks);
+  // Generate farm world
+  const farmBlocks = generateFarmWorld(scene);
+  blocks.push(...farmBlocks);
 
   // Add mouse click listeners
   window.addEventListener('click', onMouseClick);

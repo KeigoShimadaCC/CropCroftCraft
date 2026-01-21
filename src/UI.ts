@@ -9,7 +9,9 @@ export class InstructionsOverlay {
     this.element.id = 'instructions-overlay';
     this.element.innerHTML = `
       <div class="instructions-content">
-        <h1>VoxelPhysics</h1>
+        <h1>🌾 Country Farm Life 🌾</h1>
+        <p style="font-size: 14px; margin: 10px 0; opacity: 0.9;">You've left the city to start a new life in the countryside...</p>
+        <p style="font-size: 13px; margin: 5px 0 20px 0; opacity: 0.8;">Explore the farm, tend your crops, and become part of the community!</p>
         <h2>Controls</h2>
         <div class="control-section">
           <p><strong>Click</strong> to start playing</p>
