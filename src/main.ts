@@ -4,6 +4,7 @@ import { initPhysics, getPhysicsWorld } from './physics';
 import { Block } from './Block';
 import { Ground } from './Ground';
 import { Controls } from './Controls';
+import { BlockType, BlockColors } from './types';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -52,6 +53,7 @@ let lastTime = performance.now();
 const raycaster = new THREE.Raycaster();
 let highlightedBlock: Block | null = null;
 let intersectionNormal: THREE.Vector3 | null = null;
+let selectedBlockType: BlockType = BlockType.DIRT;
 
 function spawnBlock(x: number, y: number, z: number, color: number): Block {
   const block = new Block(scene, x, y, z, color);
@@ -141,8 +143,37 @@ function onMouseClick(event: MouseEvent): void {
     );
 
     if (distance > 1.0) {
-      spawnBlock(newX, newY, newZ, 0x8b4513); // Brown/wood color
+      spawnBlock(newX, newY, newZ, BlockColors[selectedBlockType]);
     }
+  }
+}
+
+// Keyboard handler for block type selection
+function onKeyDown(event: KeyboardEvent): void {
+  switch (event.code) {
+    case 'Digit1':
+      selectedBlockType = BlockType.DIRT;
+      updateUI();
+      break;
+    case 'Digit2':
+      selectedBlockType = BlockType.STONE;
+      updateUI();
+      break;
+    case 'Digit3':
+      selectedBlockType = BlockType.WOOD;
+      updateUI();
+      break;
+    case 'Digit4':
+      selectedBlockType = BlockType.GRASS;
+      updateUI();
+      break;
+  }
+}
+
+function updateUI(): void {
+  const uiElement = document.getElementById('block-type-ui');
+  if (uiElement) {
+    uiElement.textContent = `Selected: ${selectedBlockType}`;
   }
 }
 
@@ -169,6 +200,24 @@ async function main() {
   // Add mouse click listeners
   window.addEventListener('click', onMouseClick);
   window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // Add keyboard listener
+  window.addEventListener('keydown', onKeyDown);
+
+  // Create UI element
+  const uiElement = document.createElement('div');
+  uiElement.id = 'block-type-ui';
+  uiElement.style.position = 'absolute';
+  uiElement.style.top = '10px';
+  uiElement.style.left = '10px';
+  uiElement.style.color = 'white';
+  uiElement.style.fontFamily = 'monospace';
+  uiElement.style.fontSize = '16px';
+  uiElement.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+  uiElement.style.padding = '10px';
+  uiElement.style.borderRadius = '5px';
+  uiElement.textContent = `Selected: ${selectedBlockType}`;
+  document.body.appendChild(uiElement);
 
   animate();
 }
