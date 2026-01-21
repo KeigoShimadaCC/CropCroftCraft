@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { initPhysics, getPhysicsWorld } from './physics';
 import { Block } from './Block';
 import { Ground } from './Ground';
+import { Controls } from './Controls';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -46,6 +47,8 @@ window.addEventListener('resize', () => {
 
 // Game objects
 const blocks: Block[] = [];
+let controls: Controls;
+let lastTime = performance.now();
 
 function spawnBlock(x: number, y: number, z: number, color: number): Block {
   const block = new Block(scene, x, y, z, color);
@@ -56,6 +59,13 @@ function spawnBlock(x: number, y: number, z: number, color: number): Block {
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
+
+  const currentTime = performance.now();
+  const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+  lastTime = currentTime;
+
+  // Update controls
+  controls.update(deltaTime);
 
   // Step physics simulation
   const world = getPhysicsWorld();
@@ -70,6 +80,9 @@ function animate() {
 // Initialize and start
 async function main() {
   await initPhysics();
+
+  // Create controls
+  controls = new Controls(camera, renderer.domElement);
 
   // Create ground
   new Ground(scene);
