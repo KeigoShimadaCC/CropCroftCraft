@@ -1,0 +1,7 @@
+# Ralph Progress Log - VoxelPhysics
+Started: 2026-01-21
+
+## Codebase Patterns
+(Will be populated as development progresses)
+
+---

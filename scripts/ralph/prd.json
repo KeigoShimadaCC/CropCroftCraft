@@ -1,0 +1,237 @@
+{
+  "project": "VoxelPhysics",
+  "branchName": "ralph/voxel-physics-mvp",
+  "description": "A Minecraft-like voxel game with real physics - blocks fall, stack, and create chain reactions",
+  "userStories": [
+    {
+      "id": "VP-001",
+      "title": "Set up Three.js scene with camera",
+      "description": "As a player, I need a 3D scene to view the game world",
+      "acceptanceCriteria": [
+        "Three.js scene, camera, and renderer are initialized in src/main.ts",
+        "Scene has a perspective camera with reasonable FOV (75)",
+        "Renderer fills the browser window and handles resize",
+        "Basic ambient and directional lighting is added",
+        "Animation loop runs with requestAnimationFrame",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-002",
+      "title": "Initialize Rapier physics world",
+      "description": "As a developer, I need a physics simulation to handle gravity and collisions",
+      "acceptanceCriteria": [
+        "Rapier3D is initialized asynchronously in src/physics.ts",
+        "Physics world is created with gravity (0, -9.81, 0)",
+        "Export function to get physics world instance",
+        "Physics step is called in the animation loop",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-003",
+      "title": "Create Block class with mesh and physics body",
+      "description": "As a developer, I need a Block class that combines visual mesh with physics",
+      "acceptanceCriteria": [
+        "Block class exists in src/Block.ts",
+        "Constructor takes position (x, y, z) and color",
+        "Creates a BoxGeometry mesh (1x1x1 unit cube)",
+        "Creates a Rapier RigidBody with box collider",
+        "Has update() method to sync mesh position with physics body",
+        "Has destroy() method to remove from scene and physics world",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-004",
+      "title": "Create static ground plane",
+      "description": "As a player, I need ground to stand on and for blocks to rest on",
+      "acceptanceCriteria": [
+        "Ground plane is created in src/Ground.ts",
+        "Visual mesh is a large flat plane with grid texture or color",
+        "Physics body is a static (fixed) collider",
+        "Ground is positioned at y=0",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-005",
+      "title": "Spawn test blocks that fall with gravity",
+      "description": "As a player, I want to see blocks fall and stack realistically",
+      "acceptanceCriteria": [
+        "Function spawnBlock(x, y, z, color) creates and adds a Block",
+        "Spawning 5-10 blocks at different heights demonstrates physics",
+        "Blocks fall due to gravity and land on ground",
+        "Blocks stack on top of each other when landing",
+        "Block positions sync correctly with physics each frame",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-006",
+      "title": "Add first-person camera controls",
+      "description": "As a player, I want to look around with mouse and move with WASD",
+      "acceptanceCriteria": [
+        "PointerLockControls or custom controls in src/Controls.ts",
+        "Click to lock pointer and enable mouse look",
+        "Mouse movement rotates camera view",
+        "WASD keys move camera position (forward/back/strafe)",
+        "Space to move up, Shift to move down (flying mode for now)",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-007",
+      "title": "Add block highlighting on mouse hover",
+      "description": "As a player, I want to see which block I'm pointing at",
+      "acceptanceCriteria": [
+        "Raycaster detects block under crosshair",
+        "Highlighted block shows outline or highlight effect",
+        "Highlight updates as player looks around",
+        "No highlight when pointing at sky/nothing",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-008",
+      "title": "Implement block destruction on click",
+      "description": "As a player, I want to destroy blocks by clicking on them",
+      "acceptanceCriteria": [
+        "Left click destroys the highlighted block",
+        "Block is removed from scene and physics world",
+        "Blocks above the destroyed block fall due to gravity",
+        "Chain reactions work (destroy support, multiple blocks fall)",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-009",
+      "title": "Implement block placement on right-click",
+      "description": "As a player, I want to place new blocks adjacent to existing ones",
+      "acceptanceCriteria": [
+        "Right click places a block adjacent to the highlighted face",
+        "New block spawns with physics enabled",
+        "Block falls if placed without support below",
+        "Cannot place block inside player position",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-010",
+      "title": "Add multiple block types with different colors",
+      "description": "As a player, I want variety in block types",
+      "acceptanceCriteria": [
+        "BlockType enum with at least 4 types (DIRT, STONE, WOOD, GRASS)",
+        "Each type has a distinct color",
+        "Number keys 1-4 select block type to place",
+        "Current selected type shown in simple UI",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-011",
+      "title": "Add crosshair UI",
+      "description": "As a player, I need a crosshair to aim at blocks",
+      "acceptanceCriteria": [
+        "Simple crosshair (+) displayed at screen center",
+        "Crosshair is always visible using CSS overlay",
+        "Does not interfere with 3D rendering",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-012",
+      "title": "Generate simple terrain on startup",
+      "description": "As a player, I want an interesting starting world",
+      "acceptanceCriteria": [
+        "Function generateTerrain() creates a flat platform of blocks",
+        "Platform is at least 16x16 blocks",
+        "Top layer is GRASS, below is DIRT, bottom is STONE",
+        "All terrain blocks start as static (fixed) bodies",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-013",
+      "title": "Convert static blocks to dynamic when support removed",
+      "description": "As a player, I want terrain blocks to fall when their support is destroyed",
+      "acceptanceCriteria": [
+        "Terrain blocks start as static (kinematic) bodies",
+        "When a block below is destroyed, check blocks above",
+        "Unsupported blocks convert to dynamic and fall",
+        "Cascading physics works (chain of falling blocks)",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-014",
+      "title": "Add basic sound effects",
+      "description": "As a player, I want audio feedback for actions",
+      "acceptanceCriteria": [
+        "Sound plays when placing a block",
+        "Sound plays when destroying a block",
+        "Sound plays when blocks land/collide (using Rapier contact events)",
+        "Sounds are simple (can use Web Audio API tones)",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "VP-015",
+      "title": "Add instructions overlay",
+      "description": "As a player, I need to know the controls",
+      "acceptanceCriteria": [
+        "Instructions shown before pointer lock",
+        "Lists: Click to play, WASD to move, Mouse to look",
+        "Lists: Left click = destroy, Right click = place, 1-4 = block type",
+        "Instructions hide when game starts",
+        "Press ESC shows instructions again",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
