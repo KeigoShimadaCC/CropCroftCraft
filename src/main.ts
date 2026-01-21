@@ -51,6 +51,7 @@ let controls: Controls;
 let lastTime = performance.now();
 const raycaster = new THREE.Raycaster();
 let highlightedBlock: Block | null = null;
+let intersectionNormal: THREE.Vector3 | null = null;
 
 function spawnBlock(x: number, y: number, z: number, color: number): Block {
   const block = new Block(scene, x, y, z, color);
@@ -89,12 +90,15 @@ function animate() {
     highlightedBlock = null;
   }
 
+  intersectionNormal = null;
+
   if (intersects.length > 0) {
     const intersectedMesh = intersects[0].object;
     const block = blocks.find((b) => b.mesh === intersectedMesh);
     if (block) {
       block.setHighlight(true);
       highlightedBlock = block;
+      intersectionNormal = intersects[0].face?.normal || null;
     }
   }
 
@@ -110,6 +114,34 @@ function onMouseClick(event: MouseEvent): void {
       highlightedBlock.destroy();
       blocks.splice(index, 1);
       highlightedBlock = null;
+    }
+  } else if (event.button === 2 && highlightedBlock && intersectionNormal) {
+    // Right click - place block
+    event.preventDefault();
+
+    // Get the block position and add the normal to get adjacent position
+    const blockPos = highlightedBlock.mesh.position;
+
+    // Transform normal from local to world space
+    const worldNormal = intersectionNormal
+      .clone()
+      .transformDirection(highlightedBlock.mesh.matrixWorld);
+
+    // Calculate new block position (adjacent to clicked face)
+    const newX = Math.round(blockPos.x + worldNormal.x);
+    const newY = Math.round(blockPos.y + worldNormal.y);
+    const newZ = Math.round(blockPos.z + worldNormal.z);
+
+    // Don't place block at camera position (simplified check)
+    const cameraPos = camera.position;
+    const distance = Math.sqrt(
+      Math.pow(newX - cameraPos.x, 2) +
+        Math.pow(newY - cameraPos.y, 2) +
+        Math.pow(newZ - cameraPos.z, 2)
+    );
+
+    if (distance > 1.0) {
+      spawnBlock(newX, newY, newZ, 0x8b4513); // Brown/wood color
     }
   }
 }
@@ -134,8 +166,9 @@ async function main() {
   spawnBlock(-2, 18, -1, 0xffa500); // Orange
   spawnBlock(0, 25, 0, 0x800080); // Purple
 
-  // Add mouse click listener
+  // Add mouse click listeners
   window.addEventListener('click', onMouseClick);
+  window.addEventListener('contextmenu', (e) => e.preventDefault());
 
   animate();
 }
