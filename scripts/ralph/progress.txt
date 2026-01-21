@@ -194,3 +194,21 @@ Started: 2026-01-21
   - Large terrain generation should happen at startup before game loop
   - Blocks stored in array for potential future conversion to dynamic
 ---
+## 2026-01-21 16:00 - VP-013
+- Implemented convertToDynamic() method in Block class to convert static bodies to dynamic
+- Added isStatic() method to check if block is static or dynamic
+- Implemented hasSupport() function to check if a block has support below it
+- Implemented convertUnsupportedBlocks() function to find and convert all unsupported static blocks
+- Integrated support checking into block destruction flow
+- Blocks check for support at ground level (y <= 0) or from blocks directly below
+- Cascading physics works automatically - when support removed, blocks convert and fall
+- Files changed: src/Block.ts, src/main.ts
+- **Learnings for future iterations:**
+  - Converting static to dynamic requires removing old body and creating new one
+  - Must preserve position and rotation when converting body types
+  - Support checking uses grid-aligned positions (Math.round for integer coords)
+  - Ground level blocks (y <= 0) always considered supported
+  - Cascading works by checking all static blocks after each destruction
+  - Rapier's isFixed() method checks if body is static
+---
+

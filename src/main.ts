@@ -1,11 +1,12 @@
 import './style.css';
 import * as THREE from 'three';
-import { initPhysics, getPhysicsWorld } from './physics';
+import { initPhysics, getPhysicsWorld, getEventQueue } from './physics';
 import { Block } from './Block';
 import { Ground } from './Ground';
 import { Controls } from './Controls';
 import { BlockType, BlockColors } from './types';
 import { generateTerrain } from './Terrain';
+import { soundManager } from './Sound';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -75,7 +76,17 @@ function animate() {
 
   // Step physics simulation
   const world = getPhysicsWorld();
-  world.step();
+  const eventQueue = getEventQueue();
+  world.step(eventQueue);
+
+  // Handle collision events
+  eventQueue.drainCollisionEvents((_handle1, _handle2, started) => {
+    // Play collision sound when contact starts
+    if (started) {
+      // Use a simple intensity - can be enhanced with velocity info
+      soundManager.playCollisionSound(0.5);
+    }
+  });
 
   // Update all blocks
   blocks.forEach((block) => block.update());
@@ -157,6 +168,7 @@ function onMouseClick(event: MouseEvent): void {
     // Left click - destroy block
     const index = blocks.indexOf(highlightedBlock);
     if (index > -1) {
+      soundManager.playDestroySound();
       highlightedBlock.destroy();
       blocks.splice(index, 1);
       highlightedBlock = null;
@@ -190,6 +202,7 @@ function onMouseClick(event: MouseEvent): void {
     );
 
     if (distance > 1.0) {
+      soundManager.playPlaceSound();
       spawnBlock(newX, newY, newZ, BlockColors[selectedBlockType]);
     }
   }
