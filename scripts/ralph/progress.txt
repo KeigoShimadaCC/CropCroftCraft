@@ -179,3 +179,18 @@ Started: 2026-01-21
   - Fixed positioning with transform is standard centering technique
   - Crosshair shows exact point where raycaster shoots from
 ---
+
+## 2026-01-21 15:50 - VP-012
+- Implemented generateTerrain() function in src/Terrain.ts
+- Creates 16x16 block platform centered at origin (x: -8 to 7, z: -8 to 7)
+- Three layers: STONE (bottom, y=-2), DIRT (middle, y=-1), GRASS (top, y=0)
+- Each block created with static flag (fixed physics bodies)
+- Total of 768 blocks (256 per layer) in initial terrain
+- Function called at startup in main.ts
+- Files changed: src/Terrain.ts (new), src/main.ts
+- **Learnings for future iterations:**
+  - Terrain blocks must be static initially to prevent performance issues
+  - Static blocks created with isStatic parameter in Block constructor
+  - Large terrain generation should happen at startup before game loop
+  - Blocks stored in array for potential future conversion to dynamic
+---
