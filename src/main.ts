@@ -5,6 +5,7 @@ import { Block } from './Block';
 import { Ground } from './Ground';
 import { Controls } from './Controls';
 import { BlockType, BlockColors } from './types';
+import { generateTerrain } from './Terrain';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -184,18 +185,12 @@ async function main() {
   // Create controls
   controls = new Controls(camera, renderer.domElement);
 
-  // Create ground
+  // Create ground (below terrain)
   new Ground(scene);
 
-  // Spawn test blocks at different heights and positions
-  spawnBlock(0, 10, 0, 0xff0000); // Red
-  spawnBlock(1, 8, 0, 0x00ff00); // Green
-  spawnBlock(-1, 12, 0, 0x0000ff); // Blue
-  spawnBlock(0.5, 15, 0.5, 0xffff00); // Yellow
-  spawnBlock(-0.5, 6, -0.5, 0xff00ff); // Magenta
-  spawnBlock(2, 20, 1, 0x00ffff); // Cyan
-  spawnBlock(-2, 18, -1, 0xffa500); // Orange
-  spawnBlock(0, 25, 0, 0x800080); // Purple
+  // Generate terrain
+  const terrainBlocks = generateTerrain(scene);
+  blocks.push(...terrainBlocks);
 
   // Add mouse click listeners
   window.addEventListener('click', onMouseClick);

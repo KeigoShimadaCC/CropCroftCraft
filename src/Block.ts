@@ -13,7 +13,8 @@ export class Block {
     x: number,
     y: number,
     z: number,
-    color: number = 0x00ff00
+    color: number = 0x00ff00,
+    isStatic: boolean = false
   ) {
     this.scene = scene;
 
@@ -28,7 +29,9 @@ export class Block {
 
     // Create physics body
     const world = getPhysicsWorld();
-    const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z);
+    const rigidBodyDesc = isStatic
+      ? RAPIER.RigidBodyDesc.fixed().setTranslation(x, y, z)
+      : RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z);
     this.rigidBody = world.createRigidBody(rigidBodyDesc);
 
     // Create box collider (half-extents are 0.5 for a 1x1x1 cube)

@@ -5,3 +5,177 @@ Started: 2026-01-21
 (Will be populated as development progresses)
 
 ---
+
+## 2026-01-21 14:50 - VP-001
+- Implemented Three.js scene setup with perspective camera (FOV 75)
+- Added renderer with antialiasing and shadow mapping enabled
+- Configured ambient light (0.6 intensity) and directional light (0.8 intensity) with shadow support
+- Implemented window resize handler to maintain proper aspect ratio
+- Created animation loop using requestAnimationFrame
+- Cleaned up default Vite template code
+- Files changed: src/main.ts, src/style.css
+- **Learnings for future iterations:**
+  - Camera positioned at (0, 5, 10) looking at origin provides good default view
+  - Sky blue background (0x87ceeb) gives nice outdoor feel
+  - Shadow camera bounds set to -20/+20 in all directions for terrain
+  - Canvas fills entire viewport with minimal CSS reset
+---
+
+## 2026-01-21 15:00 - VP-002
+- Implemented Rapier physics initialization in src/physics.ts
+- Created initPhysics() async function that initializes RAPIER and creates World with gravity (0, -9.81, 0)
+- Added getPhysicsWorld() accessor function with proper error handling
+- Made main.ts entry point async to allow physics initialization
+- Integrated physics step into animation loop
+- Files changed: src/physics.ts (new), src/main.ts
+- **Learnings for future iterations:**
+  - RAPIER.init() must be called and awaited before creating World instance
+  - Physics world step should be called once per animation frame
+  - Main entry point needs to be async wrapper function
+  - Physics world stored as module-level singleton with accessor pattern
+---
+
+## 2026-01-21 15:05 - VP-003
+- Implemented Block class in src/Block.ts combining THREE.Mesh and RAPIER.RigidBody
+- Constructor takes scene, position (x, y, z), and color parameters
+- Creates 1x1x1 BoxGeometry with MeshStandardMaterial
+- Creates dynamic RigidBody with cuboid collider (0.5 half-extents)
+- Implemented update() method to sync mesh with physics body position and rotation
+- Implemented destroy() method to clean up physics body, mesh, geometry, and material
+- Enabled shadow casting and receiving on mesh
+- Files changed: src/Block.ts (new)
+- **Learnings for future iterations:**
+  - Cuboid collider uses half-extents, so 0.5 for a 1-unit cube
+  - Must sync both position (translation) and rotation (quaternion) each frame
+  - Proper cleanup requires removing from physics world, scene, and disposing resources
+  - Store scene reference for cleanup in destroy method
+---
+
+## 2026-01-21 15:10 - VP-004
+- Implemented Ground class in src/Ground.ts
+- Created 100x100 PlaneGeometry with forest green color
+- Rotated plane to be horizontal (rotation.x = -Math.PI / 2) at y=0
+- Created fixed (static) RigidBody at origin
+- Added thin cuboid collider (50x0.1x50 half-extents) for physics interactions
+- Enabled shadow receiving on ground mesh
+- Files changed: src/Ground.ts (new)
+- **Learnings for future iterations:**
+  - PlaneGeometry needs rotation to be horizontal in Three.js Y-up coordinate system
+  - Fixed RigidBodyDesc creates static colliders that don't move
+  - Ground collider should be thin in Y but match visual size in X/Z
+  - DoubleSide material ensures plane is visible from both sides
+---
+
+## 2026-01-21 15:15 - VP-005
+- Implemented spawnBlock() helper function in src/main.ts
+- Created blocks array to track all active blocks
+- Instantiated Ground in main initialization
+- Spawned 8 test blocks at varying heights (6-25 units) and positions
+- Blocks use different colors (red, green, blue, yellow, magenta, cyan, orange, purple)
+- Integrated block.update() calls in animation loop to sync physics with visuals
+- Files changed: src/main.ts
+- **Learnings for future iterations:**
+  - Blocks array manages all active game objects for update loop
+  - spawnBlock helper provides clean API for creating blocks
+  - Staggered heights and positions demonstrate physics interactions
+  - Each block updates position/rotation from physics body every frame
+  - Physics automatically handles collisions, stacking, and gravity
+---
+
+## 2026-01-21 15:20 - VP-006
+- Implemented Controls class in src/Controls.ts for first-person camera control
+- Click to lock pointer and enable mouse look
+- Mouse movement rotates camera with YXZ euler order
+- WASD keys for horizontal movement (forward/back/strafe)
+- Space to move up, Shift to move down (flying mode)
+- Movement velocity based on deltaTime for frame-rate independent motion
+- Polar angle clamping to prevent camera flipping
+- Integrated into main.ts with delta time tracking
+- Files changed: src/Controls.ts (new), src/main.ts
+- **Learnings for future iterations:**
+  - Pointer lock API requires user interaction (click) to engage
+  - YXZ euler order prevents gimbal lock for FPS controls
+  - Forward movement should zero out Y component to stay on horizontal plane
+  - Delta time essential for consistent movement speed across frame rates
+  - Cross product of forward and up vectors gives right strafe direction
+---
+
+## 2026-01-21 15:25 - VP-007
+- Implemented block highlighting using raycaster
+- Added setHighlight() method to Block class
+- Creates white edge outline using EdgesGeometry and LineSegments
+- Raycaster shoots from camera center (0,0 screen coords) to detect blocks
+- Highlighted block tracked and outline toggled each frame
+- Outline properly cleaned up when highlight removed
+- Files changed: src/Block.ts, src/main.ts
+- **Learnings for future iterations:**
+  - Raycaster with (0,0) screen coords shoots from center (crosshair position)
+  - EdgesGeometry creates outline from box geometry
+  - LineSegments child added to mesh follows parent transform automatically
+  - Must dispose geometry and material when removing outline
+  - Clear previous highlight before setting new one to avoid multiple highlights
+---
+
+## 2026-01-21 15:30 - VP-008
+- Implemented onMouseClick handler for block destruction
+- Left click (button 0) destroys highlighted block
+- Block properly removed from blocks array, scene, and physics world
+- Blocks above destroyed block fall due to physics (chain reactions work automatically)
+- Added window click event listener in main initialization
+- Files changed: src/main.ts
+- **Learnings for future iterations:**
+  - MouseEvent.button === 0 for left click
+  - Must remove from blocks array and call destroy() for complete cleanup
+  - Physics engine handles chain reactions automatically when support removed
+  - Set highlightedBlock to null after destruction to clear reference
+---
+
+## 2026-01-21 15:35 - VP-009
+- Implemented right-click block placement adjacent to highlighted face
+- Track intersection normal from raycast to determine placement face
+- Transform normal from local to world space using matrixWorld
+- Round position coordinates to align blocks on grid
+- Added simple player collision check (distance > 1.0 from camera)
+- New blocks spawn with physics enabled and fall if unsupported
+- Prevented context menu on right-click
+- Files changed: src/main.ts
+- **Learnings for future iterations:**
+  - MouseEvent.button === 2 for right click
+  - Face normal from raycaster is in local space, must transform to world
+  - Math.round() keeps blocks aligned to integer grid
+  - Simple distance check prevents placing block inside player
+  - preventDefault() on contextmenu event stops right-click menu
+  - New dynamic blocks automatically participate in physics
+---
+
+## 2026-01-21 15:40 - VP-010
+- Created BlockType type and BlockColors mapping in src/types.ts
+- Four block types: DIRT (brown), STONE (gray), WOOD (goldenrod), GRASS (green)
+- Number keys 1-4 select block type to place
+- Added onKeyDown handler to track block type selection
+- Created simple UI overlay showing selected block type
+- UI positioned in top-left with semi-transparent background
+- Updated block placement to use selected block type color
+- Files changed: src/types.ts (new), src/main.ts
+- **Learnings for future iterations:**
+  - Used type + const object pattern instead of enum for TypeScript isolatedModules
+  - Record<BlockType, number> ensures all types have color mappings
+  - DOM element created programmatically and styled inline
+  - Digit1-4 keycodes map to number keys
+  - UI updates immediately when block type changes
+---
+
+## 2026-01-21 15:45 - VP-011
+- Added crosshair to center of screen using CSS
+- Created crosshair div with ::before and ::after pseudo-elements for + shape
+- Positioned fixed at 50% top/left with transform centering
+- White color for visibility, 2px lines, 20x20px total size
+- Set pointer-events: none to not interfere with clicks
+- High z-index (1000) to stay above 3D canvas
+- Files changed: src/style.css, src/main.ts
+- **Learnings for future iterations:**
+  - CSS pseudo-elements create crosshair without loading images
+  - pointer-events: none prevents crosshair from blocking interactions
+  - Fixed positioning with transform is standard centering technique
+  - Crosshair shows exact point where raycaster shoots from
+---
