@@ -49,6 +49,8 @@ window.addEventListener('resize', () => {
 const blocks: Block[] = [];
 let controls: Controls;
 let lastTime = performance.now();
+const raycaster = new THREE.Raycaster();
+let highlightedBlock: Block | null = null;
 
 function spawnBlock(x: number, y: number, z: number, color: number): Block {
   const block = new Block(scene, x, y, z, color);
@@ -73,6 +75,28 @@ function animate() {
 
   // Update all blocks
   blocks.forEach((block) => block.update());
+
+  // Raycast from camera center to detect block under crosshair
+  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+  const intersects = raycaster.intersectObjects(
+    blocks.map((b) => b.mesh),
+    false
+  );
+
+  // Update highlight
+  if (highlightedBlock) {
+    highlightedBlock.setHighlight(false);
+    highlightedBlock = null;
+  }
+
+  if (intersects.length > 0) {
+    const intersectedMesh = intersects[0].object;
+    const block = blocks.find((b) => b.mesh === intersectedMesh);
+    if (block) {
+      block.setHighlight(true);
+      highlightedBlock = block;
+    }
+  }
 
   renderer.render(scene, camera);
 }

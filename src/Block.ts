@@ -6,6 +6,7 @@ export class Block {
   mesh: THREE.Mesh;
   rigidBody: RAPIER.RigidBody;
   private scene: THREE.Scene;
+  private outlineMesh: THREE.LineSegments | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -44,7 +45,33 @@ export class Block {
     this.mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
   }
 
+  setHighlight(highlighted: boolean): void {
+    if (highlighted) {
+      if (!this.outlineMesh) {
+        const edges = new THREE.EdgesGeometry(this.mesh.geometry);
+        const lineMaterial = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          linewidth: 2,
+        });
+        this.outlineMesh = new THREE.LineSegments(edges, lineMaterial);
+        this.mesh.add(this.outlineMesh);
+      }
+    } else {
+      if (this.outlineMesh) {
+        this.mesh.remove(this.outlineMesh);
+        this.outlineMesh.geometry.dispose();
+        if (this.outlineMesh.material instanceof THREE.Material) {
+          this.outlineMesh.material.dispose();
+        }
+        this.outlineMesh = null;
+      }
+    }
+  }
+
   destroy(): void {
+    // Remove highlight if present
+    this.setHighlight(false);
+
     // Remove from physics world
     const world = getPhysicsWorld();
     world.removeRigidBody(this.rigidBody);
