@@ -234,3 +234,62 @@ Started: 2026-01-21
   - Prefix unused parameters with underscore to avoid TypeScript warnings
 ---
 
+## 2026-01-21 22:25 - VP-015
+- Implemented InstructionsOverlay class in src/UI.ts
+- Created full-screen overlay with semi-transparent black background
+- Displays game title "VoxelPhysics" and comprehensive control instructions
+- Instructions include: Click to play, WASD movement, Mouse look, Space/Shift for vertical movement
+- Lists block interaction controls: Left click to destroy, Right click to place, 1-4 to select block type
+- Added ESC key handler in main.ts to show instructions overlay
+- Integrated with pointer lock events - overlay hides when pointer locks, shows when unlocked
+- Instructions automatically shown on startup before player clicks to play
+- Pressing ESC unlocks pointer and shows instructions again
+- All styling done programmatically with JavaScript for consistent appearance
+- Files changed: src/UI.ts (new), src/main.ts
+- **Learnings for future iterations:**
+  - Pointer lock change events automatically handle showing/hiding UI when ESC pressed
+  - Full-screen overlay uses fixed positioning with flexbox for centering
+  - Z-index 2000 ensures instructions appear above all game elements
+  - Escape keycode toggles pointer lock which triggers pointerlockchange event
+  - Instructions overlay state synchronized with pointer lock state for seamless UX
+  - Inline styles ensure UI works without CSS dependencies
+---
+
+## 2026-01-21 16:10 - VP-014
+- Created Sound.ts module using Web Audio API for sound effects
+- Implemented SoundManager class with oscillator-based tone generation
+- Added playPlaceSound() for block placement (440Hz square wave)
+- Added playDestroySound() for block destruction (220Hz sawtooth wave)
+- Added playCollisionSound() for collisions (variable frequency triangle wave)
+- Integrated sound effects into onMouseClick handler
+- Set up Rapier event queue to detect collision events
+- Collision sounds play when contacts start using drainCollisionEvents
+- Files changed: src/Sound.ts (new), src/main.ts, src/physics.ts (exported getEventQueue)
+- **Learnings for future iterations:**
+  - Web Audio API oscillators create simple procedural sounds
+  - Gain envelope (exponentialRampToValueAtTime) smooths sound start/end
+  - Rapier EventQueue requires passing to world.step() method
+  - drainCollisionEvents callback receives handles and started flag
+  - Simple collision intensity can use fixed value (0.5) for basic feedback
+  - Different waveforms (sine, square, sawtooth, triangle) create distinct tones
+---
+
+## 2026-01-21 16:15 - VP-015
+- Created InstructionsOverlay class in src/UI.ts
+- Displays full-screen instructions overlay with controls
+- Lists all controls: Click to play, WASD/Mouse movement, Space/Shift, block actions
+- Shows before game starts (before pointer lock)
+- Automatically hides when pointer locks (game starts)
+- ESC key toggles instructions visibility
+- Integrated with pointerlockchange event listener
+- Styled with centered layout, semi-transparent dark background
+- Files changed: src/UI.ts (new), src/main.ts
+- **Learnings for future iterations:**
+  - InstructionsOverlay class encapsulates all UI logic and styling
+  - pointerlockchange event detects when pointer lock state changes
+  - ESC key already unlocks pointer, so we just need to detect the event
+  - z-index 2000 ensures overlay appears above all game elements
+  - Programmatic styling via style properties allows self-contained component
+  - innerHTML with template strings creates structured content easily
+---
+
