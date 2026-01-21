@@ -7,6 +7,7 @@ import { Controls } from './Controls';
 import { BlockType, BlockColors } from './types';
 import { generateTerrain } from './Terrain';
 import { soundManager } from './Sound';
+import { InstructionsOverlay } from './UI';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -56,6 +57,7 @@ const raycaster = new THREE.Raycaster();
 let highlightedBlock: Block | null = null;
 let intersectionNormal: THREE.Vector3 | null = null;
 let selectedBlockType: BlockType = BlockType.DIRT;
+let instructionsOverlay: InstructionsOverlay;
 
 function spawnBlock(x: number, y: number, z: number, color: number): Block {
   const block = new Block(scene, x, y, z, color);
@@ -227,6 +229,9 @@ function onKeyDown(event: KeyboardEvent): void {
       selectedBlockType = BlockType.GRASS;
       updateUI();
       break;
+    case 'Escape':
+      instructionsOverlay.show();
+      break;
   }
 }
 
@@ -241,8 +246,22 @@ function updateUI(): void {
 async function main() {
   await initPhysics();
 
+  // Create instructions overlay
+  instructionsOverlay = new InstructionsOverlay();
+
   // Create controls
   controls = new Controls(camera, renderer.domElement);
+
+  // Listen for pointer lock changes to hide/show instructions
+  document.addEventListener('pointerlockchange', () => {
+    if (document.pointerLockElement === renderer.domElement) {
+      // Pointer is locked - hide instructions
+      instructionsOverlay.hide();
+    } else {
+      // Pointer is unlocked - show instructions
+      instructionsOverlay.show();
+    }
+  });
 
   // Create ground (below terrain)
   new Ground(scene);
