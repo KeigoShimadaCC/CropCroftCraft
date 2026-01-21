@@ -20,7 +20,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.set(0, 5, 10);
+camera.position.set(0, 3, 8);
 camera.lookAt(0, 0, 0);
 
 // Renderer setup
@@ -56,7 +56,7 @@ let lastTime = performance.now();
 const raycaster = new THREE.Raycaster();
 let highlightedBlock: Block | null = null;
 let intersectionNormal: THREE.Vector3 | null = null;
-let selectedBlockType: BlockType = BlockType.DIRT;
+let selectedBlockType: BlockType = BlockType.GRASS;
 let instructionsOverlay: InstructionsOverlay;
 
 function spawnBlock(x: number, y: number, z: number, color: number): Block {
@@ -124,19 +124,19 @@ function animate() {
 // Check if a block has support below it
 function hasSupport(block: Block, allBlocks: Block[]): boolean {
   const pos = block.mesh.position;
-  const checkY = Math.round(pos.y) - 1;
+  const checkY = Math.round(pos.y * 2) / 2 - 0.5; // Check block below (adjusted for 0.5 spacing)
 
   // Check if there's a block directly below
   for (const other of allBlocks) {
     if (other === block) continue;
 
     const otherPos = other.mesh.position;
-    const otherX = Math.round(otherPos.x);
-    const otherY = Math.round(otherPos.y);
-    const otherZ = Math.round(otherPos.z);
+    const otherX = Math.round(otherPos.x * 2) / 2;
+    const otherY = Math.round(otherPos.y * 2) / 2;
+    const otherZ = Math.round(otherPos.z * 2) / 2;
 
-    const thisX = Math.round(pos.x);
-    const thisZ = Math.round(pos.z);
+    const thisX = Math.round(pos.x * 2) / 2;
+    const thisZ = Math.round(pos.z * 2) / 2;
 
     // Block directly below
     if (otherX === thisX && otherY === checkY && otherZ === thisZ) {
@@ -144,8 +144,8 @@ function hasSupport(block: Block, allBlocks: Block[]): boolean {
     }
   }
 
-  // Check if block is at or below ground level (y <= 0)
-  if (Math.round(pos.y) <= 0) {
+  // Check if block is at or below ground level (y <= -0.5)
+  if (Math.round(pos.y * 2) / 2 <= -0.5) {
     return true;
   }
 
@@ -190,10 +190,10 @@ function onMouseClick(event: MouseEvent): void {
       .clone()
       .transformDirection(highlightedBlock.mesh.matrixWorld);
 
-    // Calculate new block position (adjacent to clicked face)
-    const newX = Math.round(blockPos.x + worldNormal.x);
-    const newY = Math.round(blockPos.y + worldNormal.y);
-    const newZ = Math.round(blockPos.z + worldNormal.z);
+    // Calculate new block position (adjacent to clicked face, adjusted for 0.5 grid)
+    const newX = Math.round((blockPos.x + worldNormal.x * 0.5) * 2) / 2;
+    const newY = Math.round((blockPos.y + worldNormal.y * 0.5) * 2) / 2;
+    const newZ = Math.round((blockPos.z + worldNormal.z * 0.5) * 2) / 2;
 
     // Don't place block at camera position (simplified check)
     const cameraPos = camera.position;
@@ -203,7 +203,7 @@ function onMouseClick(event: MouseEvent): void {
         Math.pow(newZ - cameraPos.z, 2)
     );
 
-    if (distance > 1.0) {
+    if (distance > 0.5) {
       soundManager.playPlaceSound();
       spawnBlock(newX, newY, newZ, BlockColors[selectedBlockType]);
     }
@@ -214,19 +214,39 @@ function onMouseClick(event: MouseEvent): void {
 function onKeyDown(event: KeyboardEvent): void {
   switch (event.code) {
     case 'Digit1':
-      selectedBlockType = BlockType.DIRT;
+      selectedBlockType = BlockType.GRASS;
       updateUI();
       break;
     case 'Digit2':
-      selectedBlockType = BlockType.STONE;
+      selectedBlockType = BlockType.DIRT;
       updateUI();
       break;
     case 'Digit3':
-      selectedBlockType = BlockType.WOOD;
+      selectedBlockType = BlockType.STONE;
       updateUI();
       break;
     case 'Digit4':
-      selectedBlockType = BlockType.GRASS;
+      selectedBlockType = BlockType.COBBLESTONE;
+      updateUI();
+      break;
+    case 'Digit5':
+      selectedBlockType = BlockType.BRICK;
+      updateUI();
+      break;
+    case 'Digit6':
+      selectedBlockType = BlockType.PLANKS;
+      updateUI();
+      break;
+    case 'Digit7':
+      selectedBlockType = BlockType.WOOD;
+      updateUI();
+      break;
+    case 'Digit8':
+      selectedBlockType = BlockType.GLASS;
+      updateUI();
+      break;
+    case 'Digit9':
+      selectedBlockType = BlockType.SAND;
       updateUI();
       break;
     case 'Escape':

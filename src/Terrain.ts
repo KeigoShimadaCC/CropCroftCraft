@@ -4,16 +4,16 @@ import { BlockType, BlockColors } from './types';
 
 export function generateTerrain(scene: THREE.Scene): Block[] {
   const blocks: Block[] = [];
-  const size = 16; // 16x16 platform
+  const size = 32; // 32x32 platform (doubled for smaller blocks)
 
   for (let x = -size / 2; x < size / 2; x++) {
     for (let z = -size / 2; z < size / 2; z++) {
-      // Bottom layer: stone (y = -2)
+      // Bottom layer: stone (y = -1.5)
       const stoneBlock = new Block(
         scene,
-        x,
-        -2,
-        z,
+        x * 0.5,
+        -1.5,
+        z * 0.5,
         BlockColors[BlockType.STONE],
         true // static
       );
@@ -22,20 +22,20 @@ export function generateTerrain(scene: THREE.Scene): Block[] {
       // Middle layer: dirt (y = -1)
       const dirtBlock = new Block(
         scene,
-        x,
+        x * 0.5,
         -1,
-        z,
+        z * 0.5,
         BlockColors[BlockType.DIRT],
         true // static
       );
       blocks.push(dirtBlock);
 
-      // Top layer: grass (y = 0)
+      // Top layer: grass (y = -0.5)
       const grassBlock = new Block(
         scene,
-        x,
-        0,
-        z,
+        x * 0.5,
+        -0.5,
+        z * 0.5,
         BlockColors[BlockType.GRASS],
         true // static
       );
@@ -49,98 +49,85 @@ export function generateTerrain(scene: THREE.Scene): Block[] {
 export function generateHouse(scene: THREE.Scene): Block[] {
   const blocks: Block[] = [];
 
-  // House position (offset from center)
-  const houseX = 4;
-  const houseZ = 4;
-  const groundLevel = 1; // Build on top of terrain
+  // House position (centered, adjusted for smaller blocks)
+  const houseX = 2;
+  const houseZ = 2;
+  const groundLevel = 0; // Build on top of terrain
 
-  // House dimensions
-  const width = 5;
-  const depth = 5;
-  const wallHeight = 3;
+  // House dimensions (larger with smaller blocks)
+  const width = 16; // 8 blocks wide
+  const depth = 12; // 6 blocks deep
+  const wallHeight = 10; // 5 blocks tall
 
-  // Build stone floor
+  // Helper function to place block
+  const placeBlock = (x: number, y: number, z: number, type: BlockType) => {
+    blocks.push(
+      new Block(
+        scene,
+        (houseX + x) * 0.5,
+        groundLevel + y * 0.5,
+        (houseZ + z) * 0.5,
+        BlockColors[type],
+        true
+      )
+    );
+  };
+
+  // Build cobblestone foundation
   for (let x = 0; x < width; x++) {
     for (let z = 0; z < depth; z++) {
-      const block = new Block(
-        scene,
-        houseX + x,
-        groundLevel,
-        houseZ + z,
-        BlockColors[BlockType.STONE],
-        true
-      );
-      blocks.push(block);
+      placeBlock(x, 0, z, BlockType.COBBLESTONE);
     }
   }
 
-  // Build wooden walls with door and windows
+  // Build brick walls with door and windows
   for (let y = 1; y <= wallHeight; y++) {
-    // Front wall (with door in middle)
+    // Front wall (with door and windows)
     for (let x = 0; x < width; x++) {
-      const isDoor = y <= 2 && x === Math.floor(width / 2); // Door opening
-      if (!isDoor) {
-        const block = new Block(
-          scene,
-          houseX + x,
-          groundLevel + y,
-          houseZ,
-          BlockColors[BlockType.WOOD],
-          true
-        );
-        blocks.push(block);
+      const isDoor = y <= 4 && (x === 7 || x === 8); // Double door
+      const isWindow =
+        (y >= 3 && y <= 5) && (x === 3 || x === 4 || x === 11 || x === 12); // Windows
+      if (!isDoor && !isWindow) {
+        placeBlock(x, y, 0, BlockType.BRICK);
+      } else if (isWindow) {
+        placeBlock(x, y, 0, BlockType.GLASS);
       }
     }
 
-    // Back wall
+    // Back wall (with windows)
     for (let x = 0; x < width; x++) {
-      const block = new Block(
-        scene,
-        houseX + x,
-        groundLevel + y,
-        houseZ + depth - 1,
-        BlockColors[BlockType.WOOD],
-        true
-      );
-      blocks.push(block);
+      const isWindow = (y >= 3 && y <= 5) && (x === 4 || x === 11); // Windows
+      if (!isWindow) {
+        placeBlock(x, y, depth - 1, BlockType.BRICK);
+      } else {
+        placeBlock(x, y, depth - 1, BlockType.GLASS);
+      }
     }
 
     // Left wall (with window)
     for (let z = 1; z < depth - 1; z++) {
-      const isWindow = y === 2 && z === Math.floor(depth / 2); // Window opening
+      const isWindow = (y >= 3 && y <= 5) && (z === 5 || z === 6); // Window
       if (!isWindow) {
-        const block = new Block(
-          scene,
-          houseX,
-          groundLevel + y,
-          houseZ + z,
-          BlockColors[BlockType.WOOD],
-          true
-        );
-        blocks.push(block);
+        placeBlock(0, y, z, BlockType.BRICK);
+      } else {
+        placeBlock(0, y, z, BlockType.GLASS);
       }
     }
 
     // Right wall (with window)
     for (let z = 1; z < depth - 1; z++) {
-      const isWindow = y === 2 && z === Math.floor(depth / 2); // Window opening
+      const isWindow = (y >= 3 && y <= 5) && (z === 5 || z === 6); // Window
       if (!isWindow) {
-        const block = new Block(
-          scene,
-          houseX + width - 1,
-          groundLevel + y,
-          houseZ + z,
-          BlockColors[BlockType.WOOD],
-          true
-        );
-        blocks.push(block);
+        placeBlock(width - 1, y, z, BlockType.BRICK);
+      } else {
+        placeBlock(width - 1, y, z, BlockType.GLASS);
       }
     }
   }
 
-  // Build sloped roof with stone blocks
+  // Build wooden plank roof (pitched)
   const roofHeight = wallHeight + 1;
-  for (let layer = 0; layer < 3; layer++) {
+  for (let layer = 0; layer < 6; layer++) {
     const roofWidth = width - layer * 2;
     const roofDepth = depth - layer * 2;
 
@@ -148,41 +135,30 @@ export function generateHouse(scene: THREE.Scene): Block[] {
 
     for (let x = 0; x < roofWidth; x++) {
       for (let z = 0; z < roofDepth; z++) {
-        const block = new Block(
-          scene,
-          houseX + layer + x,
-          groundLevel + roofHeight + layer,
-          houseZ + layer + z,
-          BlockColors[BlockType.STONE],
-          true
-        );
-        blocks.push(block);
+        placeBlock(layer + x, roofHeight + layer, layer + z, BlockType.PLANKS);
       }
     }
   }
 
-  // Add grass decoration on top of roof
-  const block = new Block(
-    scene,
-    houseX + Math.floor(width / 2),
-    groundLevel + roofHeight + 2,
-    houseZ + Math.floor(depth / 2),
-    BlockColors[BlockType.GRASS],
-    true
-  );
-  blocks.push(block);
+  // Add cobblestone chimney on roof
+  const chimneyX = 3;
+  const chimneyZ = depth - 3;
+  for (let y = roofHeight; y < roofHeight + 6; y++) {
+    placeBlock(chimneyX, y, chimneyZ, BlockType.COBBLESTONE);
+    placeBlock(chimneyX + 1, y, chimneyZ, BlockType.COBBLESTONE);
+  }
 
   // Add stone path leading to door
-  for (let z = -3; z < 0; z++) {
-    const block = new Block(
-      scene,
-      houseX + Math.floor(width / 2),
-      groundLevel,
-      houseZ + z,
-      BlockColors[BlockType.STONE],
-      true
-    );
-    blocks.push(block);
+  for (let z = -6; z < 0; z++) {
+    placeBlock(7, 0, z, BlockType.STONE);
+    placeBlock(8, 0, z, BlockType.STONE);
+  }
+
+  // Add decorative sand garden on side
+  for (let x = width; x < width + 4; x++) {
+    for (let z = 2; z < 6; z++) {
+      placeBlock(x, 0, z, BlockType.SAND);
+    }
   }
 
   return blocks;

@@ -18,8 +18,8 @@ export class Block {
   ) {
     this.scene = scene;
 
-    // Create visual mesh
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    // Create visual mesh (0.5x0.5x0.5 block size)
+    const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
     const material = new THREE.MeshStandardMaterial({ color });
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.castShadow = true;
@@ -34,8 +34,8 @@ export class Block {
       : RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z);
     this.rigidBody = world.createRigidBody(rigidBodyDesc);
 
-    // Create box collider (half-extents are 0.5 for a 1x1x1 cube)
-    const colliderDesc = RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5);
+    // Create box collider (half-extents are 0.25 for a 0.5x0.5x0.5 cube)
+    const colliderDesc = RAPIER.ColliderDesc.cuboid(0.25, 0.25, 0.25);
     world.createCollider(colliderDesc, this.rigidBody);
   }
 
@@ -95,7 +95,7 @@ export class Block {
     this.rigidBody = world.createRigidBody(rigidBodyDesc);
 
     // Create collider for new body
-    const colliderDesc = RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5);
+    const colliderDesc = RAPIER.ColliderDesc.cuboid(0.25, 0.25, 0.25);
     world.createCollider(colliderDesc, this.rigidBody);
   }
 

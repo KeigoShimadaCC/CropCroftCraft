@@ -23,7 +23,8 @@ export class InstructionsOverlay {
         <div class="control-section">
           <p><strong>Left Click</strong> - Destroy block</p>
           <p><strong>Right Click</strong> - Place block</p>
-          <p><strong>1-4</strong> - Select block type</p>
+          <p><strong>1-9</strong> - Select block type</p>
+          <p style="font-size: 12px; opacity: 0.8;">(Grass, Dirt, Stone, Cobblestone, Brick, Planks, Wood, Glass, Sand)</p>
         </div>
         <div class="control-section">
           <p><strong>ESC</strong> - Show/hide controls</p>
