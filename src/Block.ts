@@ -1,0 +1,61 @@
+import * as THREE from 'three';
+import RAPIER from '@dimforge/rapier3d-compat';
+import { getPhysicsWorld } from './physics';
+
+export class Block {
+  mesh: THREE.Mesh;
+  rigidBody: RAPIER.RigidBody;
+  private scene: THREE.Scene;
+
+  constructor(
+    scene: THREE.Scene,
+    x: number,
+    y: number,
+    z: number,
+    color: number = 0x00ff00
+  ) {
+    this.scene = scene;
+
+    // Create visual mesh
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial({ color });
+    this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.castShadow = true;
+    this.mesh.receiveShadow = true;
+    this.mesh.position.set(x, y, z);
+    scene.add(this.mesh);
+
+    // Create physics body
+    const world = getPhysicsWorld();
+    const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z);
+    this.rigidBody = world.createRigidBody(rigidBodyDesc);
+
+    // Create box collider (half-extents are 0.5 for a 1x1x1 cube)
+    const colliderDesc = RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.5);
+    world.createCollider(colliderDesc, this.rigidBody);
+  }
+
+  update(): void {
+    // Sync mesh position and rotation with physics body
+    const position = this.rigidBody.translation();
+    const rotation = this.rigidBody.rotation();
+
+    this.mesh.position.set(position.x, position.y, position.z);
+    this.mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+  }
+
+  destroy(): void {
+    // Remove from physics world
+    const world = getPhysicsWorld();
+    world.removeRigidBody(this.rigidBody);
+
+    // Remove from scene
+    this.scene.remove(this.mesh);
+
+    // Clean up geometry and material
+    this.mesh.geometry.dispose();
+    if (this.mesh.material instanceof THREE.Material) {
+      this.mesh.material.dispose();
+    }
+  }
+}
