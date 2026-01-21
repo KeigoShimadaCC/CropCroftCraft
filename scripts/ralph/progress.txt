@@ -212,3 +212,25 @@ Started: 2026-01-21
   - Rapier's isFixed() method checks if body is static
 ---
 
+## 2026-01-21 16:15 - VP-014
+- Implemented SoundManager class in src/Sound.ts using Web Audio API
+- Created playPlaceSound() method with 440Hz square wave for block placement
+- Created playDestroySound() method with 220Hz sawtooth wave for block destruction
+- Created playCollisionSound() method with variable frequency/duration based on intensity
+- Integrated place and destroy sounds into mouse click handlers
+- Implemented collision sound using Rapier's EventQueue and drainCollisionEvents
+- Added EventQueue creation in physics.ts initialization
+- Physics world step now passes event queue to track collisions
+- Collision sounds play when blocks hit each other with sufficient impulse
+- Files changed: src/Sound.ts (new), src/physics.ts, src/main.ts
+- **Learnings for future iterations:**
+  - Web Audio API oscillators create simple tones without loading audio files
+  - AudioContext manages audio graph and timing
+  - Gain envelope (exponentialRampToValueAtTime) prevents clicking/popping
+  - EventQueue must be created with `new RAPIER.EventQueue(true)` for auto-drain
+  - drainCollisionEvents callback receives (handle1, handle2, started) parameters
+  - Contact events fire continuously, use `started` flag to play sound only once
+  - Can enhance collision sounds by calculating intensity from contact impulse
+  - Prefix unused parameters with underscore to avoid TypeScript warnings
+---
+
