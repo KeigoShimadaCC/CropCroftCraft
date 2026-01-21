@@ -101,6 +101,19 @@ function animate() {
   renderer.render(scene, camera);
 }
 
+// Mouse click handler
+function onMouseClick(event: MouseEvent): void {
+  if (event.button === 0 && highlightedBlock) {
+    // Left click - destroy block
+    const index = blocks.indexOf(highlightedBlock);
+    if (index > -1) {
+      highlightedBlock.destroy();
+      blocks.splice(index, 1);
+      highlightedBlock = null;
+    }
+  }
+}
+
 // Initialize and start
 async function main() {
   await initPhysics();
@@ -120,6 +133,9 @@ async function main() {
   spawnBlock(2, 20, 1, 0x00ffff); // Cyan
   spawnBlock(-2, 18, -1, 0xffa500); // Orange
   spawnBlock(0, 25, 0, 0x800080); // Purple
+
+  // Add mouse click listener
+  window.addEventListener('click', onMouseClick);
 
   animate();
 }
