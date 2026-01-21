@@ -247,7 +247,7 @@ async function main() {
   await initPhysics();
 
   // Create instructions overlay
-  instructionsOverlay = new InstructionsOverlay();
+  instructionsOverlay = new InstructionsOverlay(renderer.domElement);
 
   // Create controls
   controls = new Controls(camera, renderer.domElement);
