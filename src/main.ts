@@ -8,6 +8,8 @@ import { BlockType, BlockColors } from './types';
 import { generateTerrain, generateFarmWorld } from './Terrain';
 import { soundManager } from './Sound';
 import { InstructionsOverlay } from './UI';
+import { Creature } from './Creature';
+import type { CreatureType } from './Creature';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -51,6 +53,7 @@ window.addEventListener('resize', () => {
 
 // Game objects
 const blocks: Block[] = [];
+const creatures: Creature[] = [];
 let controls: Controls;
 let lastTime = performance.now();
 const raycaster = new THREE.Raycaster();
@@ -63,6 +66,12 @@ function spawnBlock(x: number, y: number, z: number, color: number): Block {
   const block = new Block(scene, x, y, z, color);
   blocks.push(block);
   return block;
+}
+
+function spawnCreature(x: number, y: number, z: number, type: CreatureType): Creature {
+  const creature = new Creature(scene, x, y, z, type);
+  creatures.push(creature);
+  return creature;
 }
 
 // Animation loop
@@ -92,6 +101,9 @@ function animate() {
 
   // Update all blocks
   blocks.forEach((block) => block.update());
+
+  // Update all creatures
+  creatures.forEach((creature) => creature.update(deltaTime));
 
   // Raycast from camera center to detect block under crosshair
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -293,6 +305,29 @@ async function main() {
   // Generate farm world
   const farmBlocks = generateFarmWorld(scene);
   blocks.push(...farmBlocks);
+
+  // Spawn farm animals
+  // Chickens near player's house
+  spawnCreature(3, 0.5, 5, 'CHICKEN');
+  spawnCreature(4.5, 0.5, 6, 'CHICKEN');
+  spawnCreature(2.5, 0.5, 7, 'CHICKEN');
+
+  // Cows near neighbor 1's house
+  spawnCreature(-8, 0.5, 3, 'COW');
+  spawnCreature(-10, 0.5, 4, 'COW');
+
+  // Sheep near neighbor 2's house
+  spawnCreature(14, 0.5, 5, 'SHEEP');
+  spawnCreature(15, 0.5, 6, 'SHEEP');
+  spawnCreature(13, 0.5, 7, 'SHEEP');
+
+  // Pigs near the barn
+  spawnCreature(4, 0.5, -10, 'PIG');
+  spawnCreature(6, 0.5, -11, 'PIG');
+
+  // Extra chicken wandering in fields
+  spawnCreature(-2, 0.5, 8, 'CHICKEN');
+  spawnCreature(8, 0.5, 9, 'CHICKEN');
 
   // Add mouse click listeners
   window.addEventListener('click', onMouseClick);
