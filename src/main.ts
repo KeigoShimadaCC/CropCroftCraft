@@ -1,6 +1,8 @@
 import './style.css';
 import * as THREE from 'three';
 import { initPhysics, getPhysicsWorld } from './physics';
+import { Block } from './Block';
+import { Ground } from './Ground';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -42,6 +44,15 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// Game objects
+const blocks: Block[] = [];
+
+function spawnBlock(x: number, y: number, z: number, color: number): Block {
+  const block = new Block(scene, x, y, z, color);
+  blocks.push(block);
+  return block;
+}
+
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
@@ -50,12 +61,29 @@ function animate() {
   const world = getPhysicsWorld();
   world.step();
 
+  // Update all blocks
+  blocks.forEach((block) => block.update());
+
   renderer.render(scene, camera);
 }
 
 // Initialize and start
 async function main() {
   await initPhysics();
+
+  // Create ground
+  new Ground(scene);
+
+  // Spawn test blocks at different heights and positions
+  spawnBlock(0, 10, 0, 0xff0000); // Red
+  spawnBlock(1, 8, 0, 0x00ff00); // Green
+  spawnBlock(-1, 12, 0, 0x0000ff); // Blue
+  spawnBlock(0.5, 15, 0.5, 0xffff00); // Yellow
+  spawnBlock(-0.5, 6, -0.5, 0xff00ff); // Magenta
+  spawnBlock(2, 20, 1, 0x00ffff); // Cyan
+  spawnBlock(-2, 18, -1, 0xffa500); // Orange
+  spawnBlock(0, 25, 0, 0x800080); // Purple
+
   animate();
 }
 
