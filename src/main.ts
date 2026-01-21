@@ -1,5 +1,6 @@
 import './style.css';
 import * as THREE from 'three';
+import { initPhysics, getPhysicsWorld } from './physics';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -44,7 +45,18 @@ window.addEventListener('resize', () => {
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
+
+  // Step physics simulation
+  const world = getPhysicsWorld();
+  world.step();
+
   renderer.render(scene, camera);
 }
 
-animate();
+// Initialize and start
+async function main() {
+  await initPhysics();
+  animate();
+}
+
+main();
