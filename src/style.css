@@ -6,13 +6,15 @@
 
 body {
   overflow: hidden;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #1a1a2e;
 }
 
 canvas {
   display: block;
 }
 
+/* Crosshair with glow effect */
 #crosshair {
   position: fixed;
   top: 50%;
@@ -22,13 +24,14 @@ canvas {
   height: 20px;
   pointer-events: none;
   z-index: 1000;
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
 }
 
 #crosshair::before,
 #crosshair::after {
   content: '';
   position: absolute;
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.9);
 }
 
 #crosshair::before {
@@ -45,4 +48,73 @@ canvas {
   width: 2px;
   height: 100%;
   transform: translateX(-50%);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* UI Panel base styling */
+.ui-panel {
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.75) 100%);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: fadeInUp 0.3s ease-out;
+}
+
+/* Message notifications */
+.message-notification {
+  animation: fadeInUp 0.4s ease-out;
+  font-weight: 500;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Quest indicator pulse */
+.quest-indicator {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Event notification bounce */
+.event-notification {
+  animation: bounce 0.6s ease-in-out;
 }

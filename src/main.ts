@@ -18,6 +18,7 @@ import { Neighbor } from './Neighbor';
 import type { NeighborData } from './Neighbor';
 import { EventSystem } from './EventSystem';
 import type { ActiveEvent } from './EventSystem';
+import { ParticleSystem } from './ParticleSystem';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -75,6 +76,7 @@ let cinematicPlaying = false;
 let timeManager: TimeManager;
 let cropSystem: CropSystem;
 let eventSystem: EventSystem;
+let particleSystem: ParticleSystem;
 let selectedCropType: CropType = 'WHEAT';
 let isPlantingMode = false;
 
@@ -153,6 +155,9 @@ function animate() {
 
   // Update all neighbors
   neighbors.forEach((neighbor) => neighbor.update(deltaTime));
+
+  // Update particle system
+  particleSystem.update(deltaTime);
 
   // Raycast from camera center to detect block under crosshair
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -251,6 +256,8 @@ function onMouseClick(event: MouseEvent): void {
               animalResources[resourceType]++;
               soundManager.playPlaceSound(); // Use place sound for collection
               showMessage(`🎉 Collected ${resourceType}!`, 2000);
+              const pos = creature.mesh.position;
+              particleSystem.spawn('collect', pos.x, pos.y + 0.5, pos.z);
               updateTimeUI();
               return;
             }
@@ -307,6 +314,10 @@ function onMouseClick(event: MouseEvent): void {
                 showMessage(`🎁 Received ${result.reward.amount} ${result.reward.cropType} seeds!`, 2500);
               }
 
+              // Spawn heart particles at neighbor location
+              const neighborPos = neighbor.getPosition();
+              particleSystem.spawn('heart', neighborPos.x, neighborPos.y + 1, neighborPos.z);
+
               updateTimeUI();
             }
           } else {
@@ -336,6 +347,7 @@ function onMouseClick(event: MouseEvent): void {
       // Harvested a crop!
       soundManager.playDestroySound();
       showMessage(`🌾 Harvested ${cropType}!`, 2000);
+      particleSystem.spawn('harvest', blockPos.x, blockPos.y + 0.5, blockPos.z);
       return;
     }
 
@@ -615,6 +627,8 @@ function openEventMenu(): void {
 
     soundManager.playPlaceSound();
     showMessage(`💰 Sold everything at market for ${totalValue} coins! Total: ${eventSystem.getCoins()} coins`, 3500);
+    const camPos = camera.position;
+    particleSystem.spawn('coins', camPos.x, camPos.y - 1, camPos.z);
     updateTimeUI();
 
   } else if (eventSystem.isFestivalActive()) {
@@ -633,6 +647,8 @@ function openEventMenu(): void {
 
       soundManager.playPlaceSound();
       showMessage(rewardText, 3500);
+      const camPos = camera.position;
+      particleSystem.spawn('sparkle', camPos.x, camPos.y - 1, camPos.z);
       updateTimeUI();
     } else {
       showMessage("You've already claimed this festival reward!", 2500);
@@ -666,6 +682,7 @@ async function main() {
   timeManager = new TimeManager(scene, ambientLight, directionalLight);
   cropSystem = new CropSystem(scene);
   eventSystem = new EventSystem();
+  particleSystem = new ParticleSystem(scene);
 
   // Register crop growth on new day
   timeManager.registerNewDayCallback(() => {
@@ -807,51 +824,45 @@ async function main() {
   // Create UI element for block type
   const uiElement = document.createElement('div');
   uiElement.id = 'block-type-ui';
+  uiElement.className = 'ui-panel';
   uiElement.style.position = 'absolute';
   uiElement.style.top = '10px';
   uiElement.style.left = '10px';
   uiElement.style.color = 'white';
-  uiElement.style.fontFamily = 'monospace';
+  uiElement.style.fontFamily = 'Segoe UI, system-ui, sans-serif';
   uiElement.style.fontSize = '16px';
-  uiElement.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-  uiElement.style.padding = '10px';
-  uiElement.style.borderRadius = '5px';
   uiElement.textContent = `Selected: ${selectedBlockType}`;
   document.body.appendChild(uiElement);
 
   // Create time UI
   const timeElement = document.createElement('div');
   timeElement.id = 'time-ui';
+  timeElement.className = 'ui-panel';
   timeElement.style.position = 'absolute';
   timeElement.style.top = '10px';
   timeElement.style.right = '10px';
   timeElement.style.color = 'white';
-  timeElement.style.fontFamily = 'monospace';
+  timeElement.style.fontFamily = 'Segoe UI, system-ui, sans-serif';
   timeElement.style.fontSize = '14px';
-  timeElement.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
-  timeElement.style.padding = '12px';
-  timeElement.style.borderRadius = '8px';
   timeElement.style.textAlign = 'right';
-  timeElement.style.minWidth = '150px';
+  timeElement.style.minWidth = '180px';
   document.body.appendChild(timeElement);
 
   // Create message UI
   const messageElement = document.createElement('div');
   messageElement.id = 'message-ui';
+  messageElement.className = 'ui-panel message-notification';
   messageElement.style.position = 'absolute';
   messageElement.style.top = '50%';
   messageElement.style.left = '50%';
   messageElement.style.transform = 'translate(-50%, -50%)';
   messageElement.style.color = 'white';
-  messageElement.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+  messageElement.style.fontFamily = 'Segoe UI, system-ui, sans-serif';
   messageElement.style.fontSize = '24px';
-  messageElement.style.fontWeight = 'bold';
-  messageElement.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-  messageElement.style.padding = '20px 40px';
-  messageElement.style.borderRadius = '15px';
   messageElement.style.textAlign = 'center';
   messageElement.style.display = 'none';
   messageElement.style.zIndex = '1000';
+  messageElement.style.maxWidth = '80%';
   messageElement.style.textShadow = '2px 2px 4px rgba(0,0,0,0.8)';
   messageElement.style.transition = 'opacity 0.5s';
   document.body.appendChild(messageElement);
