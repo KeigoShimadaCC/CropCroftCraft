@@ -14,6 +14,8 @@ import { Cinematic } from './Cinematic';
 import { TimeManager } from './TimeManager';
 import { CropSystem } from './CropSystem';
 import type { CropType } from './CropSystem';
+import { Neighbor } from './Neighbor';
+import type { NeighborData } from './Neighbor';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -58,6 +60,7 @@ window.addEventListener('resize', () => {
 // Game objects
 const blocks: Block[] = [];
 const creatures: Creature[] = [];
+const neighbors: Neighbor[] = [];
 let controls: Controls;
 let lastTime = performance.now();
 const raycaster = new THREE.Raycaster();
@@ -79,6 +82,7 @@ const animalResources: Record<'EGG' | 'MILK' | 'WOOL', number> = {
   WOOL: 0,
 };
 
+
 function spawnBlock(x: number, y: number, z: number, color: number): Block {
   const block = new Block(scene, x, y, z, color);
   blocks.push(block);
@@ -89,6 +93,12 @@ function spawnCreature(x: number, y: number, z: number, type: CreatureType): Cre
   const creature = new Creature(scene, x, y, z, type);
   creatures.push(creature);
   return creature;
+}
+
+function spawnNeighbor(data: NeighborData): Neighbor {
+  const neighbor = new Neighbor(scene, data);
+  neighbors.push(neighbor);
+  return neighbor;
 }
 
 // Animation loop
@@ -137,6 +147,9 @@ function animate() {
 
   // Update all creatures
   creatures.forEach((creature) => creature.update(deltaTime));
+
+  // Update all neighbors
+  neighbors.forEach((neighbor) => neighbor.update(deltaTime));
 
   // Raycast from camera center to detect block under crosshair
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -247,6 +260,64 @@ function onMouseClick(event: MouseEvent): void {
             return;
           }
         }
+      }
+    }
+
+    // Check for neighbor clicks
+    const neighborDistance = 5; // Must be within 5 units to interact
+    for (const neighbor of neighbors) {
+      const playerPos = camera.position;
+      if (neighbor.isNearPosition(playerPos.x, playerPos.y, playerPos.z, neighborDistance)) {
+        // Player is near this neighbor
+        const quest = neighbor.getCurrentQuest();
+
+        if (quest) {
+          // Neighbor has a quest - try to complete it
+          let canComplete = false;
+
+          if (quest.type === 'crop') {
+            const harvested = cropSystem.getHarvestedCrops();
+            const cropType = quest.itemType as CropType;
+            if (harvested[cropType] >= quest.amount) {
+              // Player has enough crops!
+              canComplete = true;
+              cropSystem.deductHarvestedCrops(cropType, quest.amount);
+            }
+          } else if (quest.type === 'resource') {
+            const resourceType = quest.itemType as 'EGG' | 'MILK' | 'WOOL';
+            if (animalResources[resourceType] >= quest.amount) {
+              canComplete = true;
+              animalResources[resourceType] -= quest.amount;
+            }
+          }
+
+          if (canComplete) {
+            // Complete the quest!
+            const result = neighbor.completeQuest();
+            if (result.success && result.reward) {
+              soundManager.playPlaceSound();
+              showMessage(quest.completionDialogue, 3000);
+
+              // Give rewards
+              if (result.reward.type === 'seeds' && result.reward.cropType && result.reward.amount) {
+                cropSystem.addSeeds(result.reward.cropType, result.reward.amount);
+                showMessage(`🎁 Received ${result.reward.amount} ${result.reward.cropType} seeds!`, 2500);
+              }
+
+              updateTimeUI();
+            }
+          } else {
+            // Not enough items
+            const itemName = quest.itemType ? quest.itemType.toLowerCase() : 'items';
+            showMessage(`❌ Need ${quest.amount} ${itemName}${quest.amount > 1 ? 's' : ''} to complete this quest!`, 2500);
+          }
+        } else {
+          // Show greeting
+          const greeting = neighbor.getGreetingDialogue();
+          showMessage(`${neighbor.getName()}: ${greeting}`, 3000);
+        }
+
+        return; // Found neighbor interaction, stop checking
       }
     }
   }
@@ -424,6 +495,9 @@ function updateTimeUI(): void {
     const totalHarvest = harvested.WHEAT + harvested.CARROT + harvested.TOMATO;
     const totalAnimalResources = animalResources.EGG + animalResources.MILK + animalResources.WOOL;
 
+    // Count active quests
+    const activeQuests = neighbors.filter(n => n.hasQuest()).length;
+
     timeElement.innerHTML = `
       <div style="font-size: 16px; font-weight: bold;">Day ${timeManager.getDayNumber()}</div>
       <div style="font-size: 14px;">${timeManager.getTimePeriod()}</div>
@@ -437,6 +511,7 @@ function updateTimeUI(): void {
       <div style="font-size: 10px; margin-top: 4px; opacity: 0.8;">
         🥚 ${animalResources.EGG} 🥛 ${animalResources.MILK} 🧶 ${animalResources.WOOL}
       </div>
+      ${activeQuests > 0 ? `<div style="font-size: 11px; margin-top: 5px; color: #90EE90;">📋 ${activeQuests} quest${activeQuests > 1 ? 's' : ''} available!</div>` : ''}
       ${timeManager.isNightTime() ? '<div style="font-size: 11px; margin-top: 5px; color: #FFD700;">💤 Press B near bed to sleep</div>' : ''}
     `;
   }
@@ -568,6 +643,38 @@ async function main() {
   // Extra chicken wandering in fields
   spawnCreature(-2, 0.5, 8, 'CHICKEN');
   spawnCreature(8, 0.5, 9, 'CHICKEN');
+
+  // Spawn neighbors at their farmhouses
+  spawnNeighbor({
+    name: 'Old Farmer Joe',
+    personality: 'wise',
+    position: { x: -10, y: 2, z: 2 },
+    houseColor: 0xcd853f, // Peru brown (planks color)
+  });
+
+  spawnNeighbor({
+    name: 'Cheerful Mary',
+    personality: 'energetic',
+    position: { x: 12, y: 2, z: 2 },
+    houseColor: 0xb22222, // Firebrick red (brick color)
+  });
+
+  spawnNeighbor({
+    name: 'Gruff Tom',
+    personality: 'grumpy',
+    position: { x: 5, y: 2, z: -10 },
+    houseColor: 0x696969, // Dim gray (cobblestone color for barn)
+  });
+
+  // Register new day callback for quest generation
+  timeManager.registerNewDayCallback(() => {
+    // Generate quests for all neighbors on new day
+    neighbors.forEach(neighbor => {
+      if (!neighbor.hasQuest()) {
+        neighbor.generateQuest(timeManager.getDayNumber());
+      }
+    });
+  });
 
   // Add mouse click listeners
   window.addEventListener('click', onMouseClick);

@@ -192,4 +192,18 @@ export class CropSystem {
     const stages = ['🌱 Seedling', '🌿 Growing', '🌾 Almost Ready', '✨ Ready to Harvest!'];
     return stages[crop.growthStage];
   }
+
+  // Add seeds to inventory (quest reward)
+  addSeeds(cropType: CropType, amount: number): void {
+    this.inventory[cropType] += amount;
+  }
+
+  // Deduct harvested crops (quest completion)
+  deductHarvestedCrops(cropType: CropType, amount: number): boolean {
+    if (this.harvestedCrops[cropType] >= amount) {
+      this.harvestedCrops[cropType] -= amount;
+      return true;
+    }
+    return false;
+  }
 }
