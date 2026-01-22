@@ -10,6 +10,7 @@ import { soundManager } from './Sound';
 import { InstructionsOverlay } from './UI';
 import { Creature } from './Creature';
 import type { CreatureType } from './Creature';
+import { Cinematic } from './Cinematic';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -61,6 +62,8 @@ let highlightedBlock: Block | null = null;
 let intersectionNormal: THREE.Vector3 | null = null;
 let selectedBlockType: BlockType = BlockType.GRASS;
 let instructionsOverlay: InstructionsOverlay;
+let cinematic: Cinematic;
+let cinematicPlaying = false;
 
 function spawnBlock(x: number, y: number, z: number, color: number): Block {
   const block = new Block(scene, x, y, z, color);
@@ -82,8 +85,18 @@ function animate() {
   const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
   lastTime = currentTime;
 
-  // Update controls
-  controls.update(deltaTime);
+  // Update cinematic if playing
+  if (cinematicPlaying) {
+    cinematic.update(deltaTime);
+    if (!cinematic.isActive()) {
+      cinematicPlaying = false;
+      // Enable controls after cinematic
+      controls.lock();
+    }
+  } else {
+    // Update controls only when cinematic is not playing
+    controls.update(deltaTime);
+  }
 
   // Step physics simulation
   const world = getPhysicsWorld();
@@ -278,10 +291,22 @@ function updateUI(): void {
 async function main() {
   await initPhysics();
 
-  // Create instructions overlay
-  instructionsOverlay = new InstructionsOverlay(renderer.domElement);
+  // Create cinematic
+  cinematic = new Cinematic(camera);
+  cinematic.setupFarmIntro();
 
-  // Create controls
+  // Create instructions overlay with cinematic integration
+  instructionsOverlay = new InstructionsOverlay(renderer.domElement, () => {
+    // Start cinematic when user clicks to start
+    cinematicPlaying = true;
+    cinematic.play(() => {
+      // After cinematic completes, enable player control
+      cinematicPlaying = false;
+      controls.lock();
+    });
+  });
+
+  // Create controls (but don't lock yet - wait for cinematic)
   controls = new Controls(camera, renderer.domElement);
 
   // Listen for pointer lock changes to hide/show instructions
@@ -290,10 +315,22 @@ async function main() {
       // Pointer is locked - hide instructions
       instructionsOverlay.hide();
     } else {
-      // Pointer is unlocked - show instructions
-      instructionsOverlay.show();
+      // Pointer is unlocked - show instructions (unless cinematic is playing)
+      if (!cinematicPlaying) {
+        instructionsOverlay.show();
+      }
     }
   });
+
+  // Add skip cinematic on ESC or Space during intro
+  const skipCinematic = (e: KeyboardEvent) => {
+    if (cinematicPlaying && (e.code === 'Escape' || e.code === 'Space')) {
+      cinematic.skip();
+      cinematicPlaying = false;
+      controls.lock();
+    }
+  };
+  window.addEventListener('keydown', skipCinematic);
 
   // Create ground (below terrain)
   new Ground(scene);

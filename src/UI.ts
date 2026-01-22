@@ -1,10 +1,10 @@
 export class InstructionsOverlay {
   private element: HTMLElement;
   private isVisible: boolean = true;
-  private canvasElement: HTMLElement | null = null;
+  private onStart: (() => void) | null = null;
 
-  constructor(canvasElement?: HTMLElement) {
-    this.canvasElement = canvasElement || null;
+  constructor(_canvasElement?: HTMLElement, onStart?: () => void) {
+    this.onStart = onStart || null;
     this.element = document.createElement('div');
     this.element.id = 'instructions-overlay';
     this.element.innerHTML = `
@@ -64,12 +64,17 @@ export class InstructionsOverlay {
     this.applyStyles();
     document.body.appendChild(this.element);
 
-    // Make overlay clickable to start the game
-    this.element.addEventListener('click', () => {
-      if (this.canvasElement) {
-        this.canvasElement.requestPointerLock();
-      }
-    });
+    // Make start button clickable to begin cinematic
+    const startButton = this.element.querySelector('.start-button');
+    if (startButton) {
+      startButton.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent event from bubbling
+        this.hide();
+        if (this.onStart) {
+          this.onStart();
+        }
+      });
+    }
   }
 
   private applyStyles(): void {
