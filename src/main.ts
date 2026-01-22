@@ -20,6 +20,7 @@ import { EventSystem } from './EventSystem';
 import type { ActiveEvent } from './EventSystem';
 import { ParticleSystem } from './ParticleSystem';
 import { AchievementSystem } from './AchievementSystem';
+import { CookingSystem } from './CookingSystem';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -79,6 +80,7 @@ let cropSystem: CropSystem;
 let eventSystem: EventSystem;
 let particleSystem: ParticleSystem;
 let achievementSystem: AchievementSystem;
+let cookingSystem: CookingSystem;
 let selectedCropType: CropType = 'WHEAT';
 let isPlantingMode = false;
 
@@ -499,6 +501,9 @@ function onKeyDown(event: KeyboardEvent): void {
     case 'KeyA': // View Achievements
       showAchievements();
       break;
+    case 'KeyC': // Open Cooking
+      openCookingMenu();
+      break;
     case 'Escape':
       instructionsOverlay.show();
       break;
@@ -520,10 +525,12 @@ function updateUI(): void {
       `;
     } else {
       const achievementProgress = `${achievementSystem.getUnlockedCount()}/${achievementSystem.getTotalCount()}`;
+      const totalMeals = cookingSystem.getTotalMeals();
       uiElement.innerHTML = `
         <div>Block: ${selectedBlockType} | Press P for Farming</div>
         <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">💡 Click animals with ⭐ to collect resources!</div>
         <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">🏆 Press A for Achievements (${achievementProgress})</div>
+        <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">👨\u200d🍳 Press C for Cooking${totalMeals > 0 ? ` (${totalMeals} meals)` : ''}</div>
       `;
     }
   }
@@ -591,6 +598,80 @@ function tryToSleep(): void {
     showMessage("💤 You slept well! A new day begins.", 3000);
   } else {
     showMessage("You need to be near your bed to sleep! 🛏️", 2000);
+  }
+}
+
+function openCookingMenu(): void {
+  const recipes = cookingSystem.getAllRecipes();
+  const harvested = cropSystem.getHarvestedCrops();
+
+  let message = '👨\u200d🍳 COOKING MENU 👨\u200d🍳\n\n';
+  message += 'Select a recipe to cook:\n\n';
+
+  let recipeNumber = 1;
+  recipes.forEach((recipe) => {
+    const canCook = cookingSystem.canCook(recipe.id, harvested, animalResources);
+    const status = canCook ? '✓' : '✗';
+
+    message += `[${recipeNumber}] ${status} ${recipe.icon} ${recipe.name}\n`;
+    message += `    ${recipe.description}\n`;
+    message += `    Ingredients: `;
+
+    const ingredientList = Object.entries(recipe.ingredients)
+      .map(([item, count]) => `${item} x${count}`)
+      .join(', ');
+    message += ingredientList + '\n';
+    message += `    Sells for: ${recipe.sellPrice} coins\n\n`;
+
+    recipeNumber++;
+  });
+
+  message += 'Press 1-5 to cook a recipe, or C to close';
+
+  showMessage(message, 10000);
+
+  // Add temporary key listener for recipe selection
+  const cookListener = (e: KeyboardEvent) => {
+    const recipeIndex = parseInt(e.code.replace('Digit', '')) - 1;
+    if (recipeIndex >= 0 && recipeIndex < recipes.length) {
+      const recipe = recipes[recipeIndex];
+      tryCookRecipe(recipe.id);
+      document.removeEventListener('keydown', cookListener);
+    } else if (e.code === 'KeyC') {
+      document.removeEventListener('keydown', cookListener);
+    }
+  };
+
+  document.addEventListener('keydown', cookListener);
+}
+
+function tryCookRecipe(recipeId: string): void {
+  const harvested = cropSystem.getHarvestedCrops();
+  const recipe = cookingSystem.getRecipe(recipeId as any);
+
+  if (!cookingSystem.canCook(recipeId as any, harvested, animalResources)) {
+    showMessage(`❌ Not enough ingredients for ${recipe.name}!`, 2500);
+    return;
+  }
+
+  // Deduct ingredients
+  for (const [ingredient, count] of Object.entries(recipe.ingredients)) {
+    if (ingredient === 'WHEAT' || ingredient === 'CARROT' || ingredient === 'TOMATO') {
+      cropSystem.deductHarvestedCrops(ingredient as CropType, count!);
+    } else if (ingredient === 'EGG' || ingredient === 'MILK' || ingredient === 'WOOL') {
+      animalResources[ingredient] -= count!;
+    }
+  }
+
+  // Cook the meal
+  const result = cookingSystem.cook(recipeId as any, harvested, animalResources);
+
+  if (result.success && result.meal) {
+    soundManager.playPlaceSound();
+    showMessage(`${recipe.icon} Cooked ${recipe.name}! Worth ${recipe.sellPrice} coins.`, 3000);
+    const camPos = camera.position;
+    particleSystem.spawn('sparkle', camPos.x, camPos.y - 1, camPos.z);
+    updateTimeUI();
   }
 }
 
@@ -671,6 +752,17 @@ function openEventMenu(): void {
       animalResources.WOOL = 0;
     }
 
+    // Sell all cooked meals (worth more than raw ingredients!)
+    const cookedMeals = cookingSystem.getCookedMeals();
+    const recipes = cookingSystem.getAllRecipes();
+    recipes.forEach((recipe) => {
+      const mealCount = cookedMeals[recipe.id];
+      if (mealCount > 0) {
+        const earnings = cookingSystem.sellMeal(recipe.id, mealCount);
+        totalValue += earnings;
+      }
+    });
+
     soundManager.playPlaceSound();
     showMessage(`💰 Sold everything at market for ${totalValue} coins! Total: ${eventSystem.getCoins()} coins`, 3500);
     const camPos = camera.position;
@@ -742,6 +834,7 @@ async function main() {
   eventSystem = new EventSystem();
   particleSystem = new ParticleSystem(scene);
   achievementSystem = new AchievementSystem();
+  cookingSystem = new CookingSystem();
 
   // Register achievement unlock callback
   achievementSystem.registerUnlockCallback((achievement) => {
