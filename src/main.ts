@@ -19,6 +19,7 @@ import type { NeighborData } from './Neighbor';
 import { EventSystem } from './EventSystem';
 import type { ActiveEvent } from './EventSystem';
 import { ParticleSystem } from './ParticleSystem';
+import { AchievementSystem } from './AchievementSystem';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -77,6 +78,7 @@ let timeManager: TimeManager;
 let cropSystem: CropSystem;
 let eventSystem: EventSystem;
 let particleSystem: ParticleSystem;
+let achievementSystem: AchievementSystem;
 let selectedCropType: CropType = 'WHEAT';
 let isPlantingMode = false;
 
@@ -258,6 +260,10 @@ function onMouseClick(event: MouseEvent): void {
               showMessage(`🎉 Collected ${resourceType}!`, 2000);
               const pos = creature.mesh.position;
               particleSystem.spawn('collect', pos.x, pos.y + 0.5, pos.z);
+
+              // Track achievement
+              achievementSystem.onAnimalResourceCollected();
+
               updateTimeUI();
               return;
             }
@@ -318,6 +324,12 @@ function onMouseClick(event: MouseEvent): void {
               const neighborPos = neighbor.getPosition();
               particleSystem.spawn('heart', neighborPos.x, neighborPos.y + 1, neighborPos.z);
 
+              // Track achievement
+              achievementSystem.onQuestCompleted();
+              if (neighbor.getFriendshipLevel() >= 100) {
+                achievementSystem.onFriendshipMaxed();
+              }
+
               updateTimeUI();
             }
           } else {
@@ -348,6 +360,12 @@ function onMouseClick(event: MouseEvent): void {
       soundManager.playDestroySound();
       showMessage(`🌾 Harvested ${cropType}!`, 2000);
       particleSystem.spawn('harvest', blockPos.x, blockPos.y + 0.5, blockPos.z);
+
+      // Track achievement
+      achievementSystem.onCropHarvested();
+      const harvested = cropSystem.getHarvestedCrops();
+      achievementSystem.onCropVarietyCheck(harvested.WHEAT, harvested.CARROT, harvested.TOMATO);
+
       return;
     }
 
@@ -478,6 +496,9 @@ function onKeyDown(event: KeyboardEvent): void {
     case 'KeyM': // Open Market/Festival
       openEventMenu();
       break;
+    case 'KeyA': // View Achievements
+      showAchievements();
+      break;
     case 'Escape':
       instructionsOverlay.show();
       break;
@@ -498,9 +519,11 @@ function updateUI(): void {
         <div style="font-size: 11px; opacity: 0.8; margin-top: 5px;">Press P to exit</div>
       `;
     } else {
+      const achievementProgress = `${achievementSystem.getUnlockedCount()}/${achievementSystem.getTotalCount()}`;
       uiElement.innerHTML = `
         <div>Block: ${selectedBlockType} | Press P for Farming</div>
         <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">💡 Click animals with ⭐ to collect resources!</div>
+        <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">🏆 Press A for Achievements (${achievementProgress})</div>
       `;
     }
   }
@@ -571,6 +594,29 @@ function tryToSleep(): void {
   }
 }
 
+function showAchievements(): void {
+  const allAchievements = achievementSystem.getAllAchievements();
+  const unlockedCount = achievementSystem.getUnlockedCount();
+  const totalCount = achievementSystem.getTotalCount();
+  const percentage = achievementSystem.getCompletionPercentage();
+
+  let message = `🏆 ACHIEVEMENTS (${unlockedCount}/${totalCount} - ${percentage}%)\n\n`;
+
+  allAchievements.forEach((ach) => {
+    const status = ach.unlocked ? '✓' : '○';
+    const progressText = ach.unlocked
+      ? 'UNLOCKED'
+      : `${ach.progress}/${ach.maxProgress}`;
+
+    message += `${status} ${ach.icon} ${ach.name}\n`;
+    message += `   ${ach.description} (${progressText})\n\n`;
+  });
+
+  message += 'Press A again to close';
+
+  showMessage(message, 8000);
+}
+
 function openEventMenu(): void {
   const activeEvent = eventSystem.getActiveEvent();
 
@@ -629,6 +675,11 @@ function openEventMenu(): void {
     showMessage(`💰 Sold everything at market for ${totalValue} coins! Total: ${eventSystem.getCoins()} coins`, 3500);
     const camPos = camera.position;
     particleSystem.spawn('coins', camPos.x, camPos.y - 1, camPos.z);
+
+    // Track achievements
+    achievementSystem.onMarketVisit();
+    achievementSystem.onCoinsUpdated(eventSystem.getCoins());
+
     updateTimeUI();
 
   } else if (eventSystem.isFestivalActive()) {
@@ -659,15 +710,22 @@ function openEventMenu(): void {
 function showMessage(text: string, duration: number): void {
   const msgElement = document.getElementById('message-ui');
   if (msgElement) {
-    msgElement.textContent = text;
+    // Replace newlines with <br> for HTML display
+    msgElement.innerHTML = text.replace(/\n/g, '<br>');
     msgElement.style.display = 'block';
     msgElement.style.opacity = '1';
+    msgElement.style.whiteSpace = 'pre-line';
+    msgElement.style.textAlign = 'left';
+    msgElement.style.lineHeight = '1.6';
 
     setTimeout(() => {
       if (msgElement) {
         msgElement.style.opacity = '0';
         setTimeout(() => {
-          if (msgElement) msgElement.style.display = 'none';
+          if (msgElement) {
+            msgElement.style.display = 'none';
+            msgElement.style.textAlign = 'center';
+          }
         }, 500);
       }
     }, duration);
@@ -683,11 +741,20 @@ async function main() {
   cropSystem = new CropSystem(scene);
   eventSystem = new EventSystem();
   particleSystem = new ParticleSystem(scene);
+  achievementSystem = new AchievementSystem();
+
+  // Register achievement unlock callback
+  achievementSystem.registerUnlockCallback((achievement) => {
+    showMessage(`🏆 Achievement Unlocked: ${achievement.icon} ${achievement.name}!`, 4000);
+    particleSystem.spawn('sparkle', camera.position.x, camera.position.y - 1, camera.position.z);
+    soundManager.playPlaceSound();
+  });
 
   // Register crop growth on new day
   timeManager.registerNewDayCallback(() => {
     cropSystem.onNewDay(timeManager.getDayNumber());
     eventSystem.update(timeManager.getDayNumber());
+    achievementSystem.onDayPassed(timeManager.getDayNumber());
   });
 
   // Register event callbacks
