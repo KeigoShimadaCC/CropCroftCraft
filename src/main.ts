@@ -11,6 +11,9 @@ import { InstructionsOverlay } from './UI';
 import { Creature } from './Creature';
 import type { CreatureType } from './Creature';
 import { Cinematic } from './Cinematic';
+import { TimeManager } from './TimeManager';
+import { CropSystem } from './CropSystem';
+import type { CropType } from './CropSystem';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -64,6 +67,10 @@ let selectedBlockType: BlockType = BlockType.GRASS;
 let instructionsOverlay: InstructionsOverlay;
 let cinematic: Cinematic;
 let cinematicPlaying = false;
+let timeManager: TimeManager;
+let cropSystem: CropSystem;
+let selectedCropType: CropType = 'WHEAT';
+let isPlantingMode = false;
 
 function spawnBlock(x: number, y: number, z: number, color: number): Block {
   const block = new Block(scene, x, y, z, color);
@@ -96,6 +103,12 @@ function animate() {
   } else {
     // Update controls only when cinematic is not playing
     controls.update(deltaTime);
+  }
+
+  // Update time system
+  if (!cinematicPlaying) {
+    timeManager.update(deltaTime);
+    updateTimeUI();
   }
 
   // Step physics simulation
@@ -192,7 +205,20 @@ function convertUnsupportedBlocks(): void {
 // Mouse click handler
 function onMouseClick(event: MouseEvent): void {
   if (event.button === 0 && highlightedBlock) {
-    // Left click - destroy block
+    // Left click - destroy block OR harvest crop
+
+    // Check if clicking on a crop
+    const blockPos = highlightedBlock.mesh.position;
+    const cropType = cropSystem.harvestCrop(blockPos.x, blockPos.y, blockPos.z);
+
+    if (cropType) {
+      // Harvested a crop!
+      soundManager.playDestroySound();
+      showMessage(`🌾 Harvested ${cropType}!`, 2000);
+      return;
+    }
+
+    // Regular block destruction
     const index = blocks.indexOf(highlightedBlock);
     if (index > -1) {
       soundManager.playDestroySound();
@@ -204,7 +230,7 @@ function onMouseClick(event: MouseEvent): void {
       convertUnsupportedBlocks();
     }
   } else if (event.button === 2 && highlightedBlock && intersectionNormal) {
-    // Right click - place block
+    // Right click - place block OR plant crop
     event.preventDefault();
 
     // Get the block position and add the normal to get adjacent position
@@ -229,14 +255,53 @@ function onMouseClick(event: MouseEvent): void {
     );
 
     if (distance > 0.5) {
-      soundManager.playPlaceSound();
-      spawnBlock(newX, newY, newZ, BlockColors[selectedBlockType]);
+      // Planting mode - plant crops
+      if (isPlantingMode) {
+        const planted = cropSystem.plantSeed(newX, newY, newZ, selectedCropType, timeManager.getDayNumber());
+        if (planted) {
+          soundManager.playPlaceSound();
+          showMessage(`🌱 Planted ${selectedCropType} seed!`, 1500);
+          updateUI();
+        } else {
+          showMessage(`❌ Can't plant here or out of seeds!`, 1500);
+        }
+      } else {
+        // Regular block placement
+        soundManager.playPlaceSound();
+        spawnBlock(newX, newY, newZ, BlockColors[selectedBlockType]);
+      }
     }
   }
 }
 
-// Keyboard handler for block type selection
+// Keyboard handler for block type selection and crop planting
 function onKeyDown(event: KeyboardEvent): void {
+  // Toggle planting mode with P
+  if (event.code === 'KeyP') {
+    isPlantingMode = !isPlantingMode;
+    updateUI();
+    return;
+  }
+
+  // Crop selection in planting mode (Q/W/E)
+  if (isPlantingMode) {
+    switch (event.code) {
+      case 'KeyQ':
+        selectedCropType = 'WHEAT';
+        updateUI();
+        return;
+      case 'KeyW':
+        selectedCropType = 'CARROT';
+        updateUI();
+        return;
+      case 'KeyE':
+        selectedCropType = 'TOMATO';
+        updateUI();
+        return;
+    }
+  }
+
+  // Regular block selection
   switch (event.code) {
     case 'Digit1':
       selectedBlockType = BlockType.GRASS;
@@ -274,6 +339,9 @@ function onKeyDown(event: KeyboardEvent): void {
       selectedBlockType = BlockType.SAND;
       updateUI();
       break;
+    case 'KeyB': // Sleep in bed
+      tryToSleep();
+      break;
     case 'Escape':
       instructionsOverlay.show();
       break;
@@ -283,13 +351,90 @@ function onKeyDown(event: KeyboardEvent): void {
 function updateUI(): void {
   const uiElement = document.getElementById('block-type-ui');
   if (uiElement) {
-    uiElement.textContent = `Selected: ${selectedBlockType}`;
+    if (isPlantingMode) {
+      const inventory = cropSystem.getInventory();
+      uiElement.innerHTML = `
+        <div style="color: #90EE90; font-weight: bold;">🌱 PLANTING MODE</div>
+        <div style="font-size: 12px; margin-top: 5px;">
+          Q: Wheat (${inventory.WHEAT}) | W: Carrot (${inventory.CARROT}) | E: Tomato (${inventory.TOMATO})
+        </div>
+        <div style="margin-top: 5px;">Selected: ${selectedCropType}</div>
+        <div style="font-size: 11px; opacity: 0.8; margin-top: 5px;">Press P to exit</div>
+      `;
+    } else {
+      uiElement.textContent = `Block: ${selectedBlockType} | Press P for Farming`;
+    }
+  }
+}
+
+function updateTimeUI(): void {
+  const timeElement = document.getElementById('time-ui');
+  if (timeElement) {
+    const harvested = cropSystem.getHarvestedCrops();
+    const totalHarvest = harvested.WHEAT + harvested.CARROT + harvested.TOMATO;
+    timeElement.innerHTML = `
+      <div style="font-size: 16px; font-weight: bold;">Day ${timeManager.getDayNumber()}</div>
+      <div style="font-size: 14px;">${timeManager.getTimePeriod()}</div>
+      <div style="font-size: 13px;">${timeManager.getTimeString()}</div>
+      <div style="font-size: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.3);">
+        🌾 Harvested: ${totalHarvest}
+      </div>
+      ${timeManager.isNightTime() ? '<div style="font-size: 11px; margin-top: 5px; color: #FFD700;">💤 Press B near bed to sleep</div>' : ''}
+    `;
+  }
+}
+
+function tryToSleep(): void {
+  if (!timeManager.isNightTime()) {
+    showMessage("You can only sleep at night! ⏰", 2000);
+    return;
+  }
+
+  // Check if near bed (player house back corner around x=5, z=4)
+  const playerPos = camera.position;
+  const bedPos = { x: 5, z: 4 };
+  const distance = Math.sqrt(
+    Math.pow(playerPos.x - bedPos.x, 2) + Math.pow(playerPos.z - bedPos.z, 2)
+  );
+
+  if (distance < 3) {
+    timeManager.sleep();
+    showMessage("💤 You slept well! A new day begins.", 3000);
+  } else {
+    showMessage("You need to be near your bed to sleep! 🛏️", 2000);
+  }
+}
+
+function showMessage(text: string, duration: number): void {
+  const msgElement = document.getElementById('message-ui');
+  if (msgElement) {
+    msgElement.textContent = text;
+    msgElement.style.display = 'block';
+    msgElement.style.opacity = '1';
+
+    setTimeout(() => {
+      if (msgElement) {
+        msgElement.style.opacity = '0';
+        setTimeout(() => {
+          if (msgElement) msgElement.style.display = 'none';
+        }, 500);
+      }
+    }, duration);
   }
 }
 
 // Initialize and start
 async function main() {
   await initPhysics();
+
+  // Create time and crop systems
+  timeManager = new TimeManager(scene, ambientLight, directionalLight);
+  cropSystem = new CropSystem(scene);
+
+  // Register crop growth on new day
+  timeManager.registerNewDayCallback(() => {
+    cropSystem.onNewDay(timeManager.getDayNumber());
+  });
 
   // Create cinematic
   cinematic = new Cinematic(camera);
@@ -392,6 +537,43 @@ async function main() {
   uiElement.style.borderRadius = '5px';
   uiElement.textContent = `Selected: ${selectedBlockType}`;
   document.body.appendChild(uiElement);
+
+  // Create time UI
+  const timeElement = document.createElement('div');
+  timeElement.id = 'time-ui';
+  timeElement.style.position = 'absolute';
+  timeElement.style.top = '10px';
+  timeElement.style.right = '10px';
+  timeElement.style.color = 'white';
+  timeElement.style.fontFamily = 'monospace';
+  timeElement.style.fontSize = '14px';
+  timeElement.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+  timeElement.style.padding = '12px';
+  timeElement.style.borderRadius = '8px';
+  timeElement.style.textAlign = 'right';
+  timeElement.style.minWidth = '150px';
+  document.body.appendChild(timeElement);
+
+  // Create message UI
+  const messageElement = document.createElement('div');
+  messageElement.id = 'message-ui';
+  messageElement.style.position = 'absolute';
+  messageElement.style.top = '50%';
+  messageElement.style.left = '50%';
+  messageElement.style.transform = 'translate(-50%, -50%)';
+  messageElement.style.color = 'white';
+  messageElement.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+  messageElement.style.fontSize = '24px';
+  messageElement.style.fontWeight = 'bold';
+  messageElement.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+  messageElement.style.padding = '20px 40px';
+  messageElement.style.borderRadius = '15px';
+  messageElement.style.textAlign = 'center';
+  messageElement.style.display = 'none';
+  messageElement.style.zIndex = '1000';
+  messageElement.style.textShadow = '2px 2px 4px rgba(0,0,0,0.8)';
+  messageElement.style.transition = 'opacity 0.5s';
+  document.body.appendChild(messageElement);
 
   animate();
 }

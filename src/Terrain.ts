@@ -164,6 +164,46 @@ export function generateHouse(scene: THREE.Scene): Block[] {
   return blocks;
 }
 
+// Build a bed inside house
+function buildBed(
+  scene: THREE.Scene,
+  x: number,
+  y: number,
+  z: number
+): Block[] {
+  const blocks: Block[] = [];
+  const placeBlock = (dx: number, dy: number, dz: number, type: BlockType) => {
+    blocks.push(
+      new Block(
+        scene,
+        (x + dx) * 0.5,
+        y + dy * 0.5,
+        (z + dz) * 0.5,
+        BlockColors[type],
+        true
+      )
+    );
+  };
+
+  // Bed frame (wood)
+  placeBlock(0, 0, 0, BlockType.PLANKS);
+  placeBlock(1, 0, 0, BlockType.PLANKS);
+  placeBlock(0, 0, 1, BlockType.PLANKS);
+  placeBlock(1, 0, 1, BlockType.PLANKS);
+
+  // Mattress (white/wool - we'll use sand as closest to white)
+  placeBlock(0, 1, 0, BlockType.SAND);
+  placeBlock(1, 1, 0, BlockType.SAND);
+  placeBlock(0, 1, 1, BlockType.SAND);
+  placeBlock(1, 1, 1, BlockType.SAND);
+
+  // Pillow (grass = white-ish)
+  placeBlock(0, 2, 0, BlockType.GLASS);
+  placeBlock(1, 2, 0, BlockType.GLASS);
+
+  return blocks;
+}
+
 // Build a small farmhouse
 function buildFarmhouse(
   scene: THREE.Scene,
@@ -432,6 +472,10 @@ export function generateFarmWorld(scene: THREE.Scene): Block[] {
   // Player's farmhouse (main house) - center-ish
   const playerHouse = buildFarmhouse(scene, 2, 2, 12, 10);
   blocks.push(...playerHouse);
+
+  // Add bed inside player's house (back corner)
+  const bed = buildBed(scene, 10, 1, 8);
+  blocks.push(...bed);
 
   // Neighbor 1's farmhouse - to the left
   const neighbor1 = buildFarmhouse(scene, -20, 5, 10, 8);
