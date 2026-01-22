@@ -16,6 +16,8 @@ import { CropSystem } from './CropSystem';
 import type { CropType } from './CropSystem';
 import { Neighbor } from './Neighbor';
 import type { NeighborData } from './Neighbor';
+import { EventSystem } from './EventSystem';
+import type { ActiveEvent } from './EventSystem';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -72,6 +74,7 @@ let cinematic: Cinematic;
 let cinematicPlaying = false;
 let timeManager: TimeManager;
 let cropSystem: CropSystem;
+let eventSystem: EventSystem;
 let selectedCropType: CropType = 'WHEAT';
 let isPlantingMode = false;
 
@@ -460,6 +463,9 @@ function onKeyDown(event: KeyboardEvent): void {
     case 'KeyB': // Sleep in bed
       tryToSleep();
       break;
+    case 'KeyM': // Open Market/Festival
+      openEventMenu();
+      break;
     case 'Escape':
       instructionsOverlay.show();
       break;
@@ -498,11 +504,25 @@ function updateTimeUI(): void {
     // Count active quests
     const activeQuests = neighbors.filter(n => n.hasQuest()).length;
 
+    // Check for active events
+    const activeEvent = eventSystem.getActiveEvent();
+    const season = eventSystem.getCurrentSeason(timeManager.getDayNumber());
+    const seasonEmoji = eventSystem.getSeasonEmoji(season);
+
+    let eventLine = '';
+    if (activeEvent) {
+      const eventData = eventSystem.getEventData(activeEvent.type);
+      eventLine = `<div style="font-size: 11px; margin-top: 5px; color: #FFD700;">🎉 ${eventData.name} (Press M)</div>`;
+    }
+
     timeElement.innerHTML = `
-      <div style="font-size: 16px; font-weight: bold;">Day ${timeManager.getDayNumber()}</div>
+      <div style="font-size: 16px; font-weight: bold;">Day ${timeManager.getDayNumber()} ${seasonEmoji}</div>
       <div style="font-size: 14px;">${timeManager.getTimePeriod()}</div>
       <div style="font-size: 13px;">${timeManager.getTimeString()}</div>
       <div style="font-size: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.3);">
+        💰 Coins: ${eventSystem.getCoins()}
+      </div>
+      <div style="font-size: 12px; margin-top: 4px;">
         🌾 Crops: ${totalHarvest}
       </div>
       <div style="font-size: 12px; margin-top: 4px;">
@@ -512,6 +532,7 @@ function updateTimeUI(): void {
         🥚 ${animalResources.EGG} 🥛 ${animalResources.MILK} 🧶 ${animalResources.WOOL}
       </div>
       ${activeQuests > 0 ? `<div style="font-size: 11px; margin-top: 5px; color: #90EE90;">📋 ${activeQuests} quest${activeQuests > 1 ? 's' : ''} available!</div>` : ''}
+      ${eventLine}
       ${timeManager.isNightTime() ? '<div style="font-size: 11px; margin-top: 5px; color: #FFD700;">💤 Press B near bed to sleep</div>' : ''}
     `;
   }
@@ -535,6 +556,87 @@ function tryToSleep(): void {
     showMessage("💤 You slept well! A new day begins.", 3000);
   } else {
     showMessage("You need to be near your bed to sleep! 🛏️", 2000);
+  }
+}
+
+function openEventMenu(): void {
+  const activeEvent = eventSystem.getActiveEvent();
+
+  if (!activeEvent) {
+    showMessage("No events are currently active! (Markets are weekly, festivals are every 30 days)", 3000);
+    return;
+  }
+
+  if (eventSystem.isMarketActive()) {
+    // Show market selling interface
+    const harvested = cropSystem.getHarvestedCrops();
+    const hasAnyCrops = harvested.WHEAT > 0 || harvested.CARROT > 0 || harvested.TOMATO > 0;
+    const hasAnyResources = animalResources.EGG > 0 || animalResources.MILK > 0 || animalResources.WOOL > 0;
+
+    if (!hasAnyCrops && !hasAnyResources) {
+      showMessage("You don't have anything to sell at the market!", 2500);
+      return;
+    }
+
+    // Calculate total possible earnings
+    let totalValue = 0;
+    totalValue += harvested.WHEAT * 5;
+    totalValue += harvested.CARROT * 8;
+    totalValue += harvested.TOMATO * 10;
+    totalValue += animalResources.EGG * 3;
+    totalValue += animalResources.MILK * 6;
+    totalValue += animalResources.WOOL * 12;
+
+    // Sell all items
+    if (harvested.WHEAT > 0) {
+      eventSystem.sellItem('WHEAT', harvested.WHEAT);
+      cropSystem.deductHarvestedCrops('WHEAT', harvested.WHEAT);
+    }
+    if (harvested.CARROT > 0) {
+      eventSystem.sellItem('CARROT', harvested.CARROT);
+      cropSystem.deductHarvestedCrops('CARROT', harvested.CARROT);
+    }
+    if (harvested.TOMATO > 0) {
+      eventSystem.sellItem('TOMATO', harvested.TOMATO);
+      cropSystem.deductHarvestedCrops('TOMATO', harvested.TOMATO);
+    }
+    if (animalResources.EGG > 0) {
+      eventSystem.sellItem('EGG', animalResources.EGG);
+      animalResources.EGG = 0;
+    }
+    if (animalResources.MILK > 0) {
+      eventSystem.sellItem('MILK', animalResources.MILK);
+      animalResources.MILK = 0;
+    }
+    if (animalResources.WOOL > 0) {
+      eventSystem.sellItem('WOOL', animalResources.WOOL);
+      animalResources.WOOL = 0;
+    }
+
+    soundManager.playPlaceSound();
+    showMessage(`💰 Sold everything at market for ${totalValue} coins! Total: ${eventSystem.getCoins()} coins`, 3500);
+    updateTimeUI();
+
+  } else if (eventSystem.isFestivalActive()) {
+    // Claim festival reward
+    const reward = eventSystem.claimFestivalReward(activeEvent.type);
+
+    if (reward) {
+      let rewardText = '🎉 Festival reward claimed! ';
+      if (reward.seeds) {
+        cropSystem.addSeeds(reward.seeds.type, reward.seeds.amount);
+        rewardText += `+${reward.seeds.amount} ${reward.seeds.type} seeds `;
+      }
+      if (reward.coins) {
+        rewardText += `+${reward.coins} coins`;
+      }
+
+      soundManager.playPlaceSound();
+      showMessage(rewardText, 3500);
+      updateTimeUI();
+    } else {
+      showMessage("You've already claimed this festival reward!", 2500);
+    }
   }
 }
 
@@ -563,11 +665,25 @@ async function main() {
   // Create time and crop systems
   timeManager = new TimeManager(scene, ambientLight, directionalLight);
   cropSystem = new CropSystem(scene);
+  eventSystem = new EventSystem();
 
   // Register crop growth on new day
   timeManager.registerNewDayCallback(() => {
     cropSystem.onNewDay(timeManager.getDayNumber());
+    eventSystem.update(timeManager.getDayNumber());
   });
+
+  // Register event callbacks
+  eventSystem.registerEventCallbacks(
+    (event: ActiveEvent) => {
+      const data = eventSystem.getEventData(event.type);
+      showMessage(`🎉 ${data.name} has begun! ${data.description}`, 5000);
+    },
+    (event: ActiveEvent) => {
+      const data = eventSystem.getEventData(event.type);
+      showMessage(`${data.name} has ended. See you next time!`, 3000);
+    }
+  );
 
   // Create cinematic
   cinematic = new Cinematic(camera);
