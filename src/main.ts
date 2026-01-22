@@ -72,6 +72,13 @@ let cropSystem: CropSystem;
 let selectedCropType: CropType = 'WHEAT';
 let isPlantingMode = false;
 
+// Resource inventory from animals
+const animalResources: Record<'EGG' | 'MILK' | 'WOOL', number> = {
+  EGG: 0,
+  MILK: 0,
+  WOOL: 0,
+};
+
 function spawnBlock(x: number, y: number, z: number, color: number): Block {
   const block = new Block(scene, x, y, z, color);
   blocks.push(block);
@@ -204,6 +211,46 @@ function convertUnsupportedBlocks(): void {
 
 // Mouse click handler
 function onMouseClick(event: MouseEvent): void {
+  // Check for creature clicks first (both left and right click)
+  if (event.button === 0) {
+    const mouse = new THREE.Vector2();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    // Check for creature intersections
+    const creatureMeshes = creatures.map(c => c.mesh);
+    const creatureIntersects = raycaster.intersectObjects(creatureMeshes, true);
+
+    if (creatureIntersects.length > 0) {
+      // Find which creature was clicked
+      const clickedMesh = creatureIntersects[0].object;
+      for (const creature of creatures) {
+        if (creature.mesh === clickedMesh || creature.mesh.children.includes(clickedMesh as THREE.Object3D)) {
+          // Try to collect resource from this creature
+          if (creature.hasResourceReady()) {
+            const resourceType = creature.collectResource();
+            if (resourceType && resourceType !== null) {
+              animalResources[resourceType]++;
+              soundManager.playPlaceSound(); // Use place sound for collection
+              showMessage(`🎉 Collected ${resourceType}!`, 2000);
+              updateTimeUI();
+              return;
+            }
+          } else {
+            // Show when resource will be ready
+            const resourceType = creature.getResourceType();
+            if (resourceType) {
+              showMessage(`⏰ This animal needs more time to produce ${resourceType}...`, 2000);
+            }
+            return;
+          }
+        }
+      }
+    }
+  }
+
   if (event.button === 0 && highlightedBlock) {
     // Left click - destroy block OR harvest crop
 
@@ -362,7 +409,10 @@ function updateUI(): void {
         <div style="font-size: 11px; opacity: 0.8; margin-top: 5px;">Press P to exit</div>
       `;
     } else {
-      uiElement.textContent = `Block: ${selectedBlockType} | Press P for Farming`;
+      uiElement.innerHTML = `
+        <div>Block: ${selectedBlockType} | Press P for Farming</div>
+        <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">💡 Click animals with ⭐ to collect resources!</div>
+      `;
     }
   }
 }
@@ -372,12 +422,20 @@ function updateTimeUI(): void {
   if (timeElement) {
     const harvested = cropSystem.getHarvestedCrops();
     const totalHarvest = harvested.WHEAT + harvested.CARROT + harvested.TOMATO;
+    const totalAnimalResources = animalResources.EGG + animalResources.MILK + animalResources.WOOL;
+
     timeElement.innerHTML = `
       <div style="font-size: 16px; font-weight: bold;">Day ${timeManager.getDayNumber()}</div>
       <div style="font-size: 14px;">${timeManager.getTimePeriod()}</div>
       <div style="font-size: 13px;">${timeManager.getTimeString()}</div>
       <div style="font-size: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.3);">
-        🌾 Harvested: ${totalHarvest}
+        🌾 Crops: ${totalHarvest}
+      </div>
+      <div style="font-size: 12px; margin-top: 4px;">
+        🐔 Resources: ${totalAnimalResources}
+      </div>
+      <div style="font-size: 10px; margin-top: 4px; opacity: 0.8;">
+        🥚 ${animalResources.EGG} 🥛 ${animalResources.MILK} 🧶 ${animalResources.WOOL}
       </div>
       ${timeManager.isNightTime() ? '<div style="font-size: 11px; margin-top: 5px; color: #FFD700;">💤 Press B near bed to sleep</div>' : ''}
     `;

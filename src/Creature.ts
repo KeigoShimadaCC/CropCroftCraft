@@ -3,12 +3,21 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { getPhysicsWorld } from './physics';
 
 export type CreatureType = 'CHICKEN' | 'COW' | 'SHEEP' | 'PIG';
+export type ResourceType = 'EGG' | 'MILK' | 'WOOL' | null;
 
 export const CreatureColors: Record<CreatureType, number> = {
   CHICKEN: 0xffffff, // White
   COW: 0x000000, // Black and white (we'll use black)
   SHEEP: 0xf5f5f5, // Off-white
   PIG: 0xffc0cb, // Pink
+};
+
+// Resource data for each creature type
+export const CreatureResources: Record<CreatureType, { type: ResourceType; cooldown: number }> = {
+  CHICKEN: { type: 'EGG', cooldown: 30 }, // 30 seconds between eggs
+  COW: { type: 'MILK', cooldown: 45 }, // 45 seconds between milk
+  SHEEP: { type: 'WOOL', cooldown: 60 }, // 60 seconds between wool
+  PIG: { type: null, cooldown: 0 }, // Pigs don't produce resources
 };
 
 export class Creature {
@@ -20,6 +29,11 @@ export class Creature {
   private moveDirection: THREE.Vector3 = new THREE.Vector3();
   private moveDuration: number = 2; // Change direction every 2 seconds
   private moveSpeed: number = 0.5; // Slow wandering speed
+
+  // Resource collection properties
+  private resourceTimer: number = 0;
+  private hasResource: boolean = false;
+  private resourceIndicator: THREE.Mesh | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -46,6 +60,9 @@ export class Creature {
     // Create capsule collider for creature (better for characters)
     const colliderDesc = RAPIER.ColliderDesc.capsule(0.15, 0.15);
     world.createCollider(colliderDesc, this.rigidBody);
+
+    // Create resource indicator (initially hidden)
+    this.createResourceIndicator();
 
     // Set initial random direction
     this.pickNewDirection();
@@ -170,6 +187,24 @@ export class Creature {
     return group;
   }
 
+  private createResourceIndicator(): void {
+    // Only create indicator for creatures that produce resources
+    const resourceData = CreatureResources[this.type];
+    if (resourceData.type === null) return;
+
+    // Create a small glowing sphere above the creature
+    const geometry = new THREE.SphereGeometry(0.08, 8, 8);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0xffff00, // Yellow glow
+      emissive: 0xffff00,
+      emissiveIntensity: 0.5,
+    });
+    this.resourceIndicator = new THREE.Mesh(geometry, material);
+    this.resourceIndicator.position.set(0, 0.6, 0); // Above creature
+    this.resourceIndicator.visible = false;
+    this.mesh.add(this.resourceIndicator);
+  }
+
   private pickNewDirection(): void {
     // Pick a random direction to wander
     const angle = Math.random() * Math.PI * 2;
@@ -209,6 +244,23 @@ export class Creature {
       this.mesh.rotation.y = angle;
     }
 
+    // Update resource timer
+    const resourceData = CreatureResources[this.type];
+    if (resourceData.type !== null && !this.hasResource) {
+      this.resourceTimer += deltaTime;
+      if (this.resourceTimer >= resourceData.cooldown) {
+        this.hasResource = true;
+        if (this.resourceIndicator) {
+          this.resourceIndicator.visible = true;
+        }
+      }
+    }
+
+    // Animate resource indicator (bobbing effect)
+    if (this.resourceIndicator && this.resourceIndicator.visible) {
+      this.resourceIndicator.position.y = 0.6 + Math.sin(Date.now() * 0.003) * 0.05;
+    }
+
     // Sync mesh with physics
     const position = this.rigidBody.translation();
     const rotation = this.rigidBody.rotation();
@@ -219,6 +271,28 @@ export class Creature {
       2 * (rotation.w * rotation.y + rotation.x * rotation.z),
       1 - 2 * (rotation.y * rotation.y + rotation.z * rotation.z)
     );
+  }
+
+  // Resource collection methods
+  hasResourceReady(): boolean {
+    return this.hasResource;
+  }
+
+  getResourceType(): ResourceType {
+    return CreatureResources[this.type].type;
+  }
+
+  collectResource(): ResourceType {
+    if (!this.hasResource) return null;
+
+    const resourceType = CreatureResources[this.type].type;
+    this.hasResource = false;
+    this.resourceTimer = 0;
+    if (this.resourceIndicator) {
+      this.resourceIndicator.visible = false;
+    }
+
+    return resourceType;
   }
 
   destroy(): void {
